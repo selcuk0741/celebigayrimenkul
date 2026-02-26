@@ -5,10 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Çelebioğlu Gayrimenkul — Sözleşme Yönetim Sistemi</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.6.0/jspdf.plugin.autotable.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/docx/7.8.2/docx.js"></script>
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -510,19 +506,6 @@ tr:hover td{background:var(--bg2)}
         <div class="tbl-head"><h3>📊 Danışman Performansı</h3></div>
         <table><thead><tr><th>Danışman</th><th style="text-align:center">Toplam</th><th style="text-align:center">Satış</th><th style="text-align:center">Kira</th><th style="text-align:center">Tahliye</th></tr></thead><tbody id="adminPerfTable"></tbody></table>
       </div>
-      <div class="tbl-wrap">
-        <div class="tbl-head">
-          <h3>💾 Sözleşme Yedeği</h3>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn-sm" onclick="exportExcel()" style="background:#1a4a2e;color:#fff;border-color:#1a4a2e">📊 Excel (.xlsx)</button>
-            <button class="btn-sm" onclick="exportWord()" style="background:#1a2d5a;color:#fff;border-color:#1a2d5a">📝 Word (.docx)</button>
-            <button class="btn-sm" onclick="exportPDF()" style="background:#4a1a1a;color:#fff;border-color:#4a1a1a">📄 PDF (.pdf)</button>
-          </div>
-        </div>
-        <div style="padding:16px 22px;font-size:13px;color:var(--muted)">
-          Tüm sözleşmeleri seçtiğiniz formatta bilgisayarınıza indirin. Düzenli yedek almanız önerilir.
-        </div>
-      </div>
     </div>
   </div>
 </div>
@@ -550,6 +533,10 @@ tr:hover td{background:var(--bg2)}
       <div class="fg"><label>E-posta</label><input type="email" id="newUserEmail" placeholder="email@sirket.com"></div>
       <div class="fg"><label>Şifre</label><input type="password" id="newUserPass" placeholder="Şifre"></div>
       <div class="fg"><label>Rol</label><select id="newUserRole"><option value="user">Kullanıcı</option><option value="admin">Yönetici</option></select></div>
+    </div>
+    <div style="padding:0 24px 16px;font-size:12px;color:var(--muted);border-top:1px solid var(--border);padding-top:14px;margin-top:4px">
+      <strong>Sorun mu var?</strong> "Zaten kayıtlı" hatası alıp kullanıcı panelde görünmüyorsa: 
+      <a href="#" onclick="fixMissingProfile(event)" style="color:var(--brand-blue)">Profili Kurtarmayı Dene</a>
     </div>
     <div class="modal-foot">
       <button class="btn-secondary" onclick="closeAddUserModal()">İptal</button>
@@ -579,7 +566,7 @@ const db = getFirestore(fbApp);
 const auth = getAuth(fbApp);
 
 // Oturumu LOCAL olarak sakla — tarayıcı kapansa bile devam eder, refresh'te bozulmaz
-await setPersistence(auth, browserLocalPersistence);
+try { await setPersistence(auth, browserLocalPersistence); } catch(e){ console.warn('Persistence ayarlanamadı:', e); }
 
 // İkincil uygulama — kullanıcı oluştururken mevcut oturumu etkilememek için
 const secondaryApp = initializeSecondaryApp(firebaseConfig, 'secondary');
@@ -814,10 +801,7 @@ function startForm(type){
 }
 window.startForm=startForm;
 
-function gv(id){
-  if(window._gvOverride && window._gvOverride[id]!==undefined) return window._gvOverride[id]||'';
-  const el=document.getElementById(id);return el?el.value:'';
-}
+function gv(id){const el=document.getElementById(id);return el?el.value:'';}
 function fmt(n){if(!n)return '—';const num=parseFloat(n);if(isNaN(num))return n;return num.toLocaleString('tr-TR');}
 function d(val){return val||'……………'}
 
@@ -999,53 +983,59 @@ async function _saveContract(type,docNo,durum){
   const c={id:docNo,type,date:new Date().toISOString().slice(0,10),durum,createdBy:currentUser.uid,assignedTo:currentUser.uid,createdByName:currentUser.name};
 
   if(type==='satis'){
-    // Özet alanlar
     c.satici=gv('f_satici'); c.alici=gv('f_alici');
     c.adres=gv('f_adres')||[gv('f_mahalle'),gv('f_ilce'),gv('f_il')].filter(Boolean).join(', ');
     c.fiyat=gv('f_fiyat');
-    // Tüm form alanları
-    c.f_satici=gv('f_satici'); c.f_satici_tc=gv('f_satici_tc'); c.f_satici_adres=gv('f_satici_adres');
-    c.f_satici_email=gv('f_satici_email'); c.f_satici_tel=gv('f_satici_tel');
-    c.f_alici=gv('f_alici'); c.f_alici_tc=gv('f_alici_tc'); c.f_alici_adres=gv('f_alici_adres');
-    c.f_alici_email=gv('f_alici_email'); c.f_alici_tel=gv('f_alici_tel');
-    c.f_tip=gv('f_tip'); c.f_il=gv('f_il'); c.f_ilce=gv('f_ilce'); c.f_mahalle=gv('f_mahalle');
-    c.f_ada=gv('f_ada'); c.f_parsel=gv('f_parsel'); c.f_bbno=gv('f_bbno');
-    c.f_fiyat=gv('f_fiyat'); c.f_nakit=gv('f_nakit'); c.f_kredi=gv('f_kredi'); c.f_kalan=gv('f_kalan');
-    c.f_banka=gv('f_banka'); c.f_kredi_vadesi=gv('f_kredi_vadesi');
-    c.f_kapora=gv('f_kapora'); c.f_tapu_tarihi=gv('f_tapu_tarihi');
-    c.f_komisyon=gv('f_komisyon'); c.f_devir_masraf=gv('f_devir_masraf');
+    // Tüm satis form alanları
     c.f_araci_ad=gv('f_araci_ad'); c.f_araci_tc=gv('f_araci_tc');
     c.f_araci_adres=gv('f_araci_adres'); c.f_araci_tel=gv('f_araci_tel');
     c.f_araci_lisans=gv('f_araci_lisans');
+    c.f_satici=gv('f_satici'); c.f_satici_tc=gv('f_satici_tc');
+    c.f_satici_adres=gv('f_satici_adres'); c.f_satici_email=gv('f_satici_email');
+    c.f_satici_tel=gv('f_satici_tel');
+    c.f_alici=gv('f_alici'); c.f_alici_tc=gv('f_alici_tc');
+    c.f_alici_adres=gv('f_alici_adres'); c.f_alici_email=gv('f_alici_email');
+    c.f_alici_tel=gv('f_alici_tel');
+    c.f_tip=gv('f_tip'); c.f_kullanim=gv('f_kullanim');
+    c.f_il=gv('f_il'); c.f_ilce=gv('f_ilce'); c.f_mahalle=gv('f_mahalle');
+    c.f_cadde=gv('f_cadde'); c.f_sokak=gv('f_sokak'); c.f_kapi_no=gv('f_kapi_no');
+    c.f_ada=gv('f_ada'); c.f_parsel=gv('f_parsel'); c.f_bb_no=gv('f_bb_no');
+    c.f_m2=gv('f_m2'); c.f_ekb=gv('f_ekb'); c.f_hasar=gv('f_hasar');
+    c.f_fiyat=gv('f_fiyat'); c.f_kapora=gv('f_kapora');
+    c.f_nakit=gv('f_nakit'); c.f_kredi=gv('f_kredi');
+    c.f_kredi_banka=gv('f_kredi_banka'); c.f_kalan=gv('f_kalan');
+    c.f_komisyon=gv('f_komisyon'); c.f_devir_masraf=gv('f_devir_masraf');
+    c.f_tapu_tarihi=gv('f_tapu_tarihi'); c.f_sozlesme_yeri=gv('f_sozlesme_yeri');
+    c.f_notlar=gv('f_notlar');
 
   } else if(type==='kira'){
-    // Özet alanlar
     c.kiralayan=gv('f_kiralayan'); c.kiraci=gv('f_kiraci');
     c.adres=gv('f_adres'); c.kira=gv('f_kira');
-    // Tüm form alanları
+    // Tüm kira form alanları
+    c.f_tarih=gv('f_tarih'); c.f_ilce=gv('f_ilce'); c.f_adres=gv('f_adres');
     c.f_kiralayan=gv('f_kiralayan'); c.f_kiralayan_tc=gv('f_kiralayan_tc');
     c.f_kiralayan_adres=gv('f_kiralayan_adres'); c.f_kiralayan_tel=gv('f_kiralayan_tel');
-    c.f_iban=gv('f_iban'); c.f_banka_adi=gv('f_banka_adi');
+    c.f_kiralayan_iban=gv('f_kiralayan_iban'); c.f_banka_adi=gv('f_banka_adi');
     c.f_kiraci=gv('f_kiraci'); c.f_kiraci_tc=gv('f_kiraci_tc');
     c.f_kiraci_adres=gv('f_kiraci_adres'); c.f_kiraci_tel=gv('f_kiraci_tel');
     c.f_kefil=gv('f_kefil'); c.f_kefil_tc=gv('f_kefil_tc');
     c.f_kefil_adres=gv('f_kefil_adres'); c.f_kefil_tel=gv('f_kefil_tel');
-    c.f_adres=gv('f_adres'); c.f_tip=gv('f_tip');
-    c.f_kira=gv('f_kira'); c.f_kira_yillik=gv('f_kira_yillik');
-    c.f_depozito=gv('f_depozito'); c.f_kira_bas=gv('f_kira_bas');
-    c.f_kira_sure=gv('f_kira_sure'); c.f_artis=gv('f_artis');
-    c.f_odeme_gun=gv('f_odeme_gun'); c.f_demirbas=gv('f_demirbas');
+    c.f_tip=gv('f_tip'); c.f_kira=gv('f_kira');
+    c.f_kira_yillik=gv('f_kira_yillik'); c.f_depozito=gv('f_depozito');
+    c.f_kira_bas=gv('f_kira_bas'); c.f_kira_sure=gv('f_kira_sure');
+    c.f_artis=gv('f_artis'); c.f_odeme_gun=gv('f_odeme_gun');
+    c.f_demirbas=gv('f_demirbas');
     c.f_araci_ad=gv('f_araci_ad'); c.f_araci_tc=gv('f_araci_tc');
 
   } else {
-    // Özet alanlar
     c.kiralayan=gv('f_kiralayan'); c.kiraci=gv('f_kiraci'); c.adres=gv('f_adres');
-    // Tüm form alanları
+    // Tüm tahliye form alanları
     c.f_kiraci=gv('f_kiraci'); c.f_kiraci_tc=gv('f_kiraci_tc');
     c.f_kiralayan=gv('f_kiralayan'); c.f_kiralayan_tc=gv('f_kiralayan_tc');
     c.f_il=gv('f_il'); c.f_ilce=gv('f_ilce'); c.f_mahalle=gv('f_mahalle');
-    c.f_ada=gv('f_ada'); c.f_parsel=gv('f_parsel'); c.f_bbno=gv('f_bbno');
-    c.f_adres=gv('f_adres'); c.f_kira_sozlesme_tarihi=gv('f_kira_sozlesme_tarihi');
+    c.f_ada=gv('f_ada'); c.f_parsel=gv('f_parsel'); c.f_bb_no=gv('f_bb_no');
+    c.f_adres=gv('f_adres');
+    c.f_kira_sozlesme_tarihi=gv('f_kira_sozlesme_tarihi');
     c.f_tahliye_tarihi=gv('f_tahliye_tarihi'); c.f_tarih=gv('f_tarih');
   }
 
@@ -1344,32 +1334,14 @@ window.searchContracts=searchContracts;
 function viewContract(id){
   const c=contracts.find(x=>x.id===id);
   if(!c)return;
-
-  // Eğer tüm alanlar kaydedilmişse (yeni format) tam PDF oluştur
-  // Aksi halde eski özet görünümü göster
-  const hasFullData = c.type==='satis' ? !!c.f_satici : c.type==='kira' ? !!c.f_kiraci : !!c.f_tahliye_tarihi;
-
-  if(hasFullData){
-    // Geçici olarak form alanlarını doldur ve PDF oluştur
-    const saved={};
-    Object.keys(c).filter(k=>k.startsWith('f_')).forEach(k=>{
-      saved[k]=c[k];
-    });
-    // gv() yerine direkt veri döndüren geçici fonksiyon
-    const _origGv=window._gvOverride;
-    window._gvOverride=saved;
-    document.getElementById('pdfContent').innerHTML=buildPDF(c.type, c.id);
-    window._gvOverride=_origGv;
-  } else {
-    // Eski sözleşmeler için özet görünüm (önceki format)
-    const titles={satis:'GAYRİMENKUL SATIŞINA CAYMA AKÇELİ ARACILIK SÖZLEŞMESİ',kira:'KONUT KİRA SÖZLEŞMESİ',tahliye:'TAHLİYE TAAHHÜDÜ'};
-    const icons={satis:'🏡',kira:'🔑',tahliye:'🚪'};
-    let taraflar='',mali='';
-    if(c.type==='satis'){taraflar=`<div class="pdf-row"><div class="pdf-key">Satıcı</div><div class="pdf-val">${esc(c.satici)||'—'}</div></div><div class="pdf-row"><div class="pdf-key">Alıcı</div><div class="pdf-val">${esc(c.alici)||'—'}</div></div>`;mali=`<div class="pdf-row"><div class="pdf-key">Satış Bedeli</div><div class="pdf-val">${c.fiyat?fmt(c.fiyat)+' ₺':'—'}</div></div>`;}
-    else if(c.type==='kira'){taraflar=`<div class="pdf-row"><div class="pdf-key">Kiraya Veren</div><div class="pdf-val">${esc(c.kiralayan)||'—'}</div></div><div class="pdf-row"><div class="pdf-key">Kiracı</div><div class="pdf-val">${esc(c.kiraci)||'—'}</div></div>`;mali=`<div class="pdf-row"><div class="pdf-key">Aylık Kira</div><div class="pdf-val">${c.kira?fmt(c.kira)+' ₺':'—'}</div></div>`;}
-    else{taraflar=`<div class="pdf-row"><div class="pdf-key">Kiraya Veren</div><div class="pdf-val">${esc(c.kiralayan)||'—'}</div></div><div class="pdf-row"><div class="pdf-key">Kiracı</div><div class="pdf-val">${esc(c.kiraci)||'—'}</div></div>`;mali='';}
-    document.getElementById('pdfContent').innerHTML=`${antet(esc(c.id))}<div class="pdf-title-block"><h2>${titles[c.type]}</h2><div class="pdf-type-bar">${icons[c.type]} ${c.type.toUpperCase()}</div></div><div class="pdf-ref-box"><div><div class="pdf-ref-k">No</div><div class="pdf-ref-v">${esc(c.id)}</div></div><div><div class="pdf-ref-k">Tarih</div><div class="pdf-ref-v">${esc(c.date)||'—'}</div></div><div><div class="pdf-ref-k">Danışman</div><div class="pdf-ref-v">${esc(c.createdByName)||'—'}</div></div></div><div class="pdf-tasınmaz-box">${taraflar}<div class="pdf-row"><div class="pdf-key">Adres</div><div class="pdf-val">${esc(c.adres)||'—'}</div></div>${mali}</div><div class="pdf-footer-bar"><span>Çelebioğlu Gayrimenkul</span><span>${esc(c.id)} — Arşiv Kopyası</span></div>`;
-  }
+  const today=new Date().toLocaleDateString('tr-TR',{day:'2-digit',month:'long',year:'numeric'});
+  const titles={satis:'GAYRİMENKUL SATIŞINA CAYMA AKÇELİ ARACILIK SÖZLEŞMESİ',kira:'KONUT KİRA SÖZLEŞMESİ',tahliye:'TAHLİYE TAAHHÜDÜ'};
+  const icons={satis:'🏡',kira:'🔑',tahliye:'🚪'};
+  let taraflar='',mali='';
+  if(c.type==='satis'){taraflar=`<div class="pdf-row"><div class="pdf-key">Satıcı</div><div class="pdf-val">${esc(c.satici)||'—'}</div></div><div class="pdf-row"><div class="pdf-key">Alıcı</div><div class="pdf-val">${esc(c.alici)||'—'}</div></div>`;mali=`<div class="pdf-row"><div class="pdf-key">Satış Bedeli</div><div class="pdf-val">${c.fiyat?fmt(c.fiyat)+' ₺':'—'}</div></div>`;}
+  else if(c.type==='kira'){taraflar=`<div class="pdf-row"><div class="pdf-key">Kiraya Veren</div><div class="pdf-val">${esc(c.kiralayan)||'—'}</div></div><div class="pdf-row"><div class="pdf-key">Kiracı</div><div class="pdf-val">${esc(c.kiraci)||'—'}</div></div>`;mali=`<div class="pdf-row"><div class="pdf-key">Aylık Kira</div><div class="pdf-val">${c.kira?fmt(c.kira)+' ₺':'—'}</div></div>`;}
+  else{taraflar=`<div class="pdf-row"><div class="pdf-key">Kiraya Veren</div><div class="pdf-val">${esc(c.kiralayan)||'—'}</div></div><div class="pdf-row"><div class="pdf-key">Kiracı</div><div class="pdf-val">${esc(c.kiraci)||'—'}</div></div>`;mali='';}
+  document.getElementById('pdfContent').innerHTML=`${antet(esc(c.id))}<div class="pdf-title-block"><h2>${titles[c.type]}</h2><div class="pdf-type-bar">${icons[c.type]} ${c.type.toUpperCase()}</div></div><div class="pdf-ref-box"><div><div class="pdf-ref-k">No</div><div class="pdf-ref-v">${esc(c.id)}</div></div><div><div class="pdf-ref-k">Tarih</div><div class="pdf-ref-v">${esc(c.date)||'—'}</div></div><div><div class="pdf-ref-k">Danışman</div><div class="pdf-ref-v">${esc(c.createdByName)||'—'}</div></div></div><div class="pdf-tasınmaz-box">${taraflar}<div class="pdf-row"><div class="pdf-key">Adres</div><div class="pdf-val">${esc(c.adres)||'—'}</div></div>${mali}</div><div class="pdf-footer-bar"><span>Çelebioğlu Gayrimenkul</span><span>${esc(c.id)} — Arşiv Kopyası</span></div>`;
   document.getElementById('pdfModal').classList.remove('hidden');
 }
 async function deleteContract(id){
@@ -1408,7 +1380,7 @@ async function renderAdmin(){
     <td><div style="display:flex;align-items:center;gap:10px"><div class="staff-avatar">${esc(u.name||'?').split(' ').map(x=>x[0]).join('').slice(0,2)}</div>${esc(u.name)}</div></td>
     <td style="font-family:'DM Mono',monospace;font-size:12px">${esc(u.email)}</td>
     <td><span class="badge ${u.role==='admin'?'badge-admin':'badge-taslak'}">${u.role==='admin'?'Yönetici':'Danışman'}</span></td>
-    <td><span class="badge badge-ok">${u.active===false?'Devre Dışı':'Aktif'}</span></td>
+    <td>${u.active===false?'<span class="badge badge-aracilik">Devre Dışı</span>':'<span class="badge badge-ok">Aktif</span>'}</td>
     <td>${u.uid!==currentUser?.uid?`<button class="btn-sm danger" onclick="removeUser('${esc(u.uid)}')">Kaldır</button>`:'<span style="font-size:12px;color:var(--muted)">Sen</span>'}</td>
   </tr>`).join('');
   const danismanlar=users.filter(u=>u.role==='user');
@@ -1432,29 +1404,33 @@ async function addUser(){
   btn.disabled=true; btn.textContent='Ekleniyor...';
 
   try{
-    // İkincil Auth instance ile kullanıcı oluştur — mevcut admin oturumu KAPANMAZ
+    // 1. Auth'ta kullanıcı oluştur
     const cred = await createUserWithEmailAndPassword(secondaryAuth, email, pass);
+    const newUid = cred.user.uid;
 
-    // İkincil oturumu hemen kapat
-    await signOut(secondaryAuth);
-
-    // Firestore'a profil kaydet — şifre YOK
+    // 2. İKİNCİL OTURUMU KAPATMADAN ÖNCE Firestore'a kaydet
     const profile = { name, email, role, active: true, createdAt: new Date().toISOString() };
-    await fbSaveUserProfile(cred.user.uid, profile);
+    await fbSaveUserProfile(newUid, profile);
 
-    users.push({...profile, uid: cred.user.uid});
+    // 3. Şimdi ikincil oturumu kapat
+    try { await signOut(secondaryAuth); } catch(e2) { /* önemli değil */ }
+
+    // 4. Başarı
+    users.push({...profile, uid: newUid});
     closeAddUserModal();
     await renderAdmin();
     showToast('✓ ' + name + ' eklendi!');
     ['newUserName','newUserEmail','newUserPass'].forEach(id=>{document.getElementById(id).value='';});
+
   } catch(e){
-    console.error('Kullanıcı ekleme hatası:',e);
+    console.error('Kullanıcı ekleme hatası:', e.code, e.message);
     if(e.code==='auth/email-already-in-use'){
-      showToast('⚠️ Bu e-posta zaten kayıtlı.');
+      // Auth'ta var ama Firestore'da yoksa profili kurtarmayı dene
+      showToast('⚠️ Bu e-posta Auth'ta zaten kayıtlı. Firebase Console'dan UID'yi alıp Firestore'a ekleyin.');
     } else if(e.code==='auth/weak-password'){
       showToast('⚠️ Şifre en az 6 karakter olmalıdır.');
     } else {
-      showToast('⚠️ Kullanıcı eklenemedi: '+e.message);
+      showToast('⚠️ Kullanıcı eklenemedi: ' + e.message);
     }
   } finally {
     btn.disabled=false; btn.textContent='Ekle';
@@ -1474,122 +1450,55 @@ async function removeUser(uid){
     showToast('⚠️ İşlem başarısız: '+e.message);
   }
 }
+async function fixMissingProfile(e){
+  e.preventDefault();
+  const email = document.getElementById('newUserEmail').value.trim();
+  const name  = document.getElementById('newUserName').value.trim();
+  const role  = document.getElementById('newUserRole').value;
+  if(!email||!name){ showToast('E-posta ve ad alanlarını doldurun.'); return; }
+
+  // Auth'ta zaten var ama UID'yi bilmiyoruz — kullanıcıyı sil ve yeniden oluştur
+  const pass = document.getElementById('newUserPass').value;
+  if(!pass){ showToast('Şifreyi de girin.'); return; }
+
+  showToast('⏳ Profil kurtarılıyor...');
+  try {
+    // Önce mevcut secondary kullanıcıyı sil
+    try { await signOut(secondaryAuth); } catch(e2){}
+
+    // Kullanıcıyı yeniden oluşturmaya çalış — eğer başarısız olursa signIn ile UID al
+    let uid;
+    try {
+      const cred = await createUserWithEmailAndPassword(secondaryAuth, email, pass);
+      uid = cred.user.uid;
+    } catch(e3) {
+      if(e3.code === 'auth/email-already-in-use'){
+        // Şifreyle giriş yap, UID'yi al
+        const cred2 = await signInWithEmailAndPassword(secondaryAuth, email, pass);
+        uid = cred2.user.uid;
+      } else { throw e3; }
+    }
+
+    // Firestore'a profili kaydet
+    const profile = { name, email, role, active: true, createdAt: new Date().toISOString() };
+    await fbSaveUserProfile(uid, profile);
+    try { await signOut(secondaryAuth); } catch(e4){}
+
+    users.push({...profile, uid});
+    closeAddUserModal();
+    await renderAdmin();
+    showToast('✓ ' + name + ' profili kurtarıldı!');
+    ['newUserName','newUserEmail','newUserPass'].forEach(id=>{document.getElementById(id).value='';});
+  } catch(err){
+    console.error('Kurtarma hatası:', err);
+    showToast('⚠️ Kurtarılamadı: ' + err.message);
+  }
+}
+window.fixMissingProfile=fixMissingProfile;
 window.openAddUserModal=openAddUserModal;
 window.closeAddUserModal=closeAddUserModal;
 window.addUser=addUser;
 window.removeUser=removeUser;
-
-// ── YEDEK / EXPORT ───────────────────────────────────────────────────────────
-function getExportRows(){
-  const turler={satis:'Satış',kira:'Kira',tahliye:'Tahliye'};
-  const durumlar={tamamlandi:'Tamamlandı',taslak:'Taslak'};
-  return contracts.map(c=>({
-    'Sözleşme No': c.id||'',
-    'Tür': turler[c.type]||c.type||'',
-    'Tarih': c.date||'',
-    'Durum': durumlar[c.durum]||c.durum||'',
-    'Satıcı / Kiraya Veren': c.satici||c.kiralayan||'',
-    'Alıcı / Kiracı': c.alici||c.kiraci||'',
-    'Adres': c.adres||'',
-    'Bedel (₺)': c.fiyat||c.kira||'',
-    'Danışman': c.createdByName||''
-  }));
-}
-
-function exportExcel(){
-  if(!contracts.length){showToast('⚠️ Henüz sözleşme yok.');return;}
-  const rows=getExportRows();
-  const ws=XLSX.utils.json_to_sheet(rows);
-  ws['!cols']=[{wch:18},{wch:10},{wch:12},{wch:12},{wch:24},{wch:24},{wch:32},{wch:14},{wch:18}];
-  const wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,ws,'Sözleşmeler');
-  const tarih=new Date().toLocaleDateString('tr-TR').replace(/\./g,'-');
-  XLSX.writeFile(wb,`celebigayrimenkul_yedek_${tarih}.xlsx`);
-  showToast('✓ Excel dosyası indirildi.');
-}
-
-async function exportWord(){
-  if(!contracts.length){showToast('⚠️ Henüz sözleşme yok.');return;}
-  showToast('⏳ Word dosyası hazırlanıyor...');
-  try{
-    const {Document,Packer,Paragraph,Table,TableRow,TableCell,TextRun,WidthType,AlignmentType,BorderStyle,ShadingType}=window.docx;
-    const rows=getExportRows();
-    const headers=Object.keys(rows[0]);
-    const border={style:BorderStyle.SINGLE,size:1,color:'CCCCCC'};
-    const borders={top:border,bottom:border,left:border,right:border};
-    const colW=Math.floor(9360/headers.length);
-
-    const headerRow=new TableRow({children:headers.map(h=>new TableCell({
-      borders,width:{size:colW,type:WidthType.DXA},
-      shading:{fill:'1A1A2E',type:ShadingType.CLEAR},
-      margins:{top:80,bottom:80,left:100,right:100},
-      children:[new Paragraph({children:[new TextRun({text:h,bold:true,color:'FFFFFF',size:18,font:'Arial'})]})]
-    }))});
-
-    const dataRows=rows.map(r=>new TableRow({children:Object.values(r).map(v=>new TableCell({
-      borders,width:{size:colW,type:WidthType.DXA},
-      margins:{top:60,bottom:60,left:100,right:100},
-      children:[new Paragraph({children:[new TextRun({text:String(v),size:16,font:'Arial'})]})]
-    }))}));
-
-    const tarih=new Date().toLocaleDateString('tr-TR');
-    const doc=new Document({sections:[{
-      properties:{page:{size:{width:21000,height:29700},margin:{top:1000,right:800,bottom:1000,left:800}}},
-      children:[
-        new Paragraph({children:[new TextRun({text:'Çelebioğlu Gayrimenkul — Sözleşme Arşivi',bold:true,size:28,font:'Arial',color:'1A1A2E'})],spacing:{after:200}}),
-        new Paragraph({children:[new TextRun({text:`Oluşturma Tarihi: ${tarih} | Toplam: ${contracts.length} sözleşme`,size:18,font:'Arial',color:'6B7A99'})],spacing:{after:400}}),
-        new Table({width:{size:9360,type:WidthType.DXA},columnWidths:headers.map(()=>colW),rows:[headerRow,...dataRows]})
-      ]
-    }]});
-
-    const buf=await Packer.toBlob(doc);
-    const url=URL.createObjectURL(buf);
-    const a=document.createElement('a');
-    const t2=new Date().toLocaleDateString('tr-TR').replace(/\./g,'-');
-    a.href=url;a.download=`celebigayrimenkul_yedek_${t2}.docx`;a.click();
-    URL.revokeObjectURL(url);
-    showToast('✓ Word dosyası indirildi.');
-  }catch(e){console.error(e);showToast('⚠️ Word oluşturulamadı: '+e.message);}
-}
-
-function exportPDF(){
-  if(!contracts.length){showToast('⚠️ Henüz sözleşme yok.');return;}
-  try{
-    const {jsPDF}=window.jspdf;
-    const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
-    const rows=getExportRows();
-    const headers=Object.keys(rows[0]);
-    const tarih=new Date().toLocaleDateString('tr-TR');
-
-    doc.setFont('helvetica','bold');
-    doc.setFontSize(14);
-    doc.setTextColor(26,26,46);
-    doc.text('Celebioglu Gayrimenkul - Sozlesme Arsivi',14,15);
-    doc.setFont('helvetica','normal');
-    doc.setFontSize(9);
-    doc.setTextColor(107,122,153);
-    doc.text(`Tarih: ${tarih} | Toplam: ${contracts.length} sozlesme`,14,22);
-
-    doc.autoTable({
-      startY:28,
-      head:[headers],
-      body:rows.map(r=>Object.values(r).map(v=>String(v))),
-      styles:{fontSize:7,font:'helvetica',cellPadding:2,overflow:'linebreak'},
-      headStyles:{fillColor:[26,26,46],textColor:255,fontStyle:'bold'},
-      alternateRowStyles:{fillColor:[242,244,248]},
-      margin:{left:14,right:14},
-      tableWidth:'auto'
-    });
-
-    const t2=new Date().toLocaleDateString('tr-TR').replace(/\./g,'-');
-    doc.save(`celebigayrimenkul_yedek_${t2}.pdf`);
-    showToast('✓ PDF dosyası indirildi.');
-  }catch(e){console.error(e);showToast('⚠️ PDF oluşturulamadı: '+e.message);}
-}
-
-window.exportExcel=exportExcel;
-window.exportWord=exportWord;
-window.exportPDF=exportPDF;
 
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
 </script>
