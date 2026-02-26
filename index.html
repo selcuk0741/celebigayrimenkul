@@ -603,14 +603,16 @@ async function fbLoadContracts(){
   try{
     let q;
     if(currentUser && currentUser.role !== 'admin'){
-      // Danışman: sadece kendi oluşturduğu sözleşmeleri getir
-      q = query(collection(db,'contracts'), where('createdBy','==',currentUser.uid), orderBy('date','desc'));
+      // Danışman: sadece kendi sözleşmeleri — composite index gerektirmesin diye orderBy YOK, client-side sort yapıyoruz
+      q = query(collection(db,'contracts'), where('createdBy','==',currentUser.uid));
     } else {
-      // Admin: tüm sözleşmeleri getir
+      // Admin: tüm sözleşmeler
       q = query(collection(db,'contracts'), orderBy('date','desc'));
     }
     const snap = await getDocs(q);
     contracts = snap.docs.map(d=>({...d.data(), _docId:d.id}));
+    // Client-side tarihe göre azalan sırala
+    contracts.sort((a,b)=>(b.datetime||b.date||'').localeCompare(a.datetime||a.date||''));
   } catch(e){ console.error('Yükleme hatası:',e); }
 }
 
@@ -989,17 +991,19 @@ async function saveDraft(){
 
 // ── FIX 3: Tüm form alanlarını Firestore'a kaydet ─────────────────────────────
 async function _saveContract(type,docNo,durum){
-  // FIX: Tarih + Saat birlikte kaydet
+  // Tarih: local timezone (toISOString() UTC verir, Türkiye UTC+3 farkı oluşturur)
   const _now=new Date();
   const _pad=n=>String(n).padStart(2,'0');
   const _dateStr=_now.getFullYear()+'-'+_pad(_now.getMonth()+1)+'-'+_pad(_now.getDate());
   const _timeStr=_pad(_now.getHours())+':'+_pad(_now.getMinutes());
+  const _displayDate=_pad(_now.getDate())+'.'+_pad(_now.getMonth()+1)+'.'+_now.getFullYear();
 
   const c={
     id:docNo,type,
     date:_dateStr,
     time:_timeStr,
     datetime:_dateStr+' '+_timeStr,
+    displayDate:_displayDate+' '+_timeStr,
     durum,
     createdBy:currentUser.uid,
     assignedTo:currentUser.uid,
@@ -1311,7 +1315,7 @@ function renderContractTable(list,showDelete=true){
     const danismanCell=isAdmin?`<td><span style="font-size:12px">${esc(c.createdByName)||'—'}</span></td>`:'';
     const safeId=esc(c.id);
     // FIX: Tarih + saat göster
-    const tarihCell=c.date?(c.date+(c.time?` <span style="font-size:10px;color:var(--muted)">${esc(c.time)}</span>`:'')):''||'—';
+    const tarihCell=c.displayDate||( c.date?(c.date+(c.time?' '+esc(c.time):'')):'' )||'—';
     return `<tr><td><span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)">${safeId}</span></td><td><span class="badge ${badge}">${tn[c.type]}</span></td><td>${taraf}</td><td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.adres)||'—'}</td><td>${tarihCell}</td><td>${db[c.durum]||''}</td>${danismanCell}<td style="display:flex;gap:6px"><button class="btn-sm" onclick="viewContract('${safeId}')">Görüntüle</button>${showDelete&&isAdmin?`<button class="btn-sm danger" onclick="deleteContract('${safeId}')">Sil</button>`:''}</td></tr>`;
   }).join('')+'</tbody></table>';
 }
