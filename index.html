@@ -814,7 +814,10 @@ function startForm(type){
 }
 window.startForm=startForm;
 
-function gv(id){const el=document.getElementById(id);return el?el.value:'';}
+function gv(id){
+  if(window._gvOverride && window._gvOverride[id]!==undefined) return window._gvOverride[id]||'';
+  const el=document.getElementById(id);return el?el.value:'';
+}
 function fmt(n){if(!n)return '—';const num=parseFloat(n);if(isNaN(num))return n;return num.toLocaleString('tr-TR');}
 function d(val){return val||'……………'}
 
@@ -994,9 +997,58 @@ async function saveDraft(){
 }
 async function _saveContract(type,docNo,durum){
   const c={id:docNo,type,date:new Date().toISOString().slice(0,10),durum,createdBy:currentUser.uid,assignedTo:currentUser.uid,createdByName:currentUser.name};
-  if(type==='satis'){c.satici=gv('f_satici');c.alici=gv('f_alici');c.adres=gv('f_adres')||[gv('f_mahalle'),gv('f_ilce'),gv('f_il')].filter(Boolean).join(', ');c.fiyat=gv('f_fiyat');}
-  else if(type==='kira'){c.kiralayan=gv('f_kiralayan');c.kiraci=gv('f_kiraci');c.adres=gv('f_adres');c.kira=gv('f_kira');}
-  else{c.kiralayan=gv('f_kiralayan');c.kiraci=gv('f_kiraci');c.adres=gv('f_adres');}
+
+  if(type==='satis'){
+    // Özet alanlar
+    c.satici=gv('f_satici'); c.alici=gv('f_alici');
+    c.adres=gv('f_adres')||[gv('f_mahalle'),gv('f_ilce'),gv('f_il')].filter(Boolean).join(', ');
+    c.fiyat=gv('f_fiyat');
+    // Tüm form alanları
+    c.f_satici=gv('f_satici'); c.f_satici_tc=gv('f_satici_tc'); c.f_satici_adres=gv('f_satici_adres');
+    c.f_satici_email=gv('f_satici_email'); c.f_satici_tel=gv('f_satici_tel');
+    c.f_alici=gv('f_alici'); c.f_alici_tc=gv('f_alici_tc'); c.f_alici_adres=gv('f_alici_adres');
+    c.f_alici_email=gv('f_alici_email'); c.f_alici_tel=gv('f_alici_tel');
+    c.f_tip=gv('f_tip'); c.f_il=gv('f_il'); c.f_ilce=gv('f_ilce'); c.f_mahalle=gv('f_mahalle');
+    c.f_ada=gv('f_ada'); c.f_parsel=gv('f_parsel'); c.f_bbno=gv('f_bbno');
+    c.f_fiyat=gv('f_fiyat'); c.f_nakit=gv('f_nakit'); c.f_kredi=gv('f_kredi'); c.f_kalan=gv('f_kalan');
+    c.f_banka=gv('f_banka'); c.f_kredi_vadesi=gv('f_kredi_vadesi');
+    c.f_kapora=gv('f_kapora'); c.f_tapu_tarihi=gv('f_tapu_tarihi');
+    c.f_komisyon=gv('f_komisyon'); c.f_devir_masraf=gv('f_devir_masraf');
+    c.f_araci_ad=gv('f_araci_ad'); c.f_araci_tc=gv('f_araci_tc');
+    c.f_araci_adres=gv('f_araci_adres'); c.f_araci_tel=gv('f_araci_tel');
+    c.f_araci_lisans=gv('f_araci_lisans');
+
+  } else if(type==='kira'){
+    // Özet alanlar
+    c.kiralayan=gv('f_kiralayan'); c.kiraci=gv('f_kiraci');
+    c.adres=gv('f_adres'); c.kira=gv('f_kira');
+    // Tüm form alanları
+    c.f_kiralayan=gv('f_kiralayan'); c.f_kiralayan_tc=gv('f_kiralayan_tc');
+    c.f_kiralayan_adres=gv('f_kiralayan_adres'); c.f_kiralayan_tel=gv('f_kiralayan_tel');
+    c.f_iban=gv('f_iban'); c.f_banka_adi=gv('f_banka_adi');
+    c.f_kiraci=gv('f_kiraci'); c.f_kiraci_tc=gv('f_kiraci_tc');
+    c.f_kiraci_adres=gv('f_kiraci_adres'); c.f_kiraci_tel=gv('f_kiraci_tel');
+    c.f_kefil=gv('f_kefil'); c.f_kefil_tc=gv('f_kefil_tc');
+    c.f_kefil_adres=gv('f_kefil_adres'); c.f_kefil_tel=gv('f_kefil_tel');
+    c.f_adres=gv('f_adres'); c.f_tip=gv('f_tip');
+    c.f_kira=gv('f_kira'); c.f_kira_yillik=gv('f_kira_yillik');
+    c.f_depozito=gv('f_depozito'); c.f_kira_bas=gv('f_kira_bas');
+    c.f_kira_sure=gv('f_kira_sure'); c.f_artis=gv('f_artis');
+    c.f_odeme_gun=gv('f_odeme_gun'); c.f_demirbas=gv('f_demirbas');
+    c.f_araci_ad=gv('f_araci_ad'); c.f_araci_tc=gv('f_araci_tc');
+
+  } else {
+    // Özet alanlar
+    c.kiralayan=gv('f_kiralayan'); c.kiraci=gv('f_kiraci'); c.adres=gv('f_adres');
+    // Tüm form alanları
+    c.f_kiraci=gv('f_kiraci'); c.f_kiraci_tc=gv('f_kiraci_tc');
+    c.f_kiralayan=gv('f_kiralayan'); c.f_kiralayan_tc=gv('f_kiralayan_tc');
+    c.f_il=gv('f_il'); c.f_ilce=gv('f_ilce'); c.f_mahalle=gv('f_mahalle');
+    c.f_ada=gv('f_ada'); c.f_parsel=gv('f_parsel'); c.f_bbno=gv('f_bbno');
+    c.f_adres=gv('f_adres'); c.f_kira_sozlesme_tarihi=gv('f_kira_sozlesme_tarihi');
+    c.f_tahliye_tarihi=gv('f_tahliye_tarihi'); c.f_tarih=gv('f_tarih');
+  }
+
   showToast('⏳ Kaydediliyor...');
   await fbSaveContract(c);
   await fbLoadContracts();
@@ -1292,14 +1344,32 @@ window.searchContracts=searchContracts;
 function viewContract(id){
   const c=contracts.find(x=>x.id===id);
   if(!c)return;
-  const today=new Date().toLocaleDateString('tr-TR',{day:'2-digit',month:'long',year:'numeric'});
-  const titles={satis:'GAYRİMENKUL SATIŞINA CAYMA AKÇELİ ARACILIK SÖZLEŞMESİ',kira:'KONUT KİRA SÖZLEŞMESİ',tahliye:'TAHLİYE TAAHHÜDÜ'};
-  const icons={satis:'🏡',kira:'🔑',tahliye:'🚪'};
-  let taraflar='',mali='';
-  if(c.type==='satis'){taraflar=`<div class="pdf-row"><div class="pdf-key">Satıcı</div><div class="pdf-val">${esc(c.satici)||'—'}</div></div><div class="pdf-row"><div class="pdf-key">Alıcı</div><div class="pdf-val">${esc(c.alici)||'—'}</div></div>`;mali=`<div class="pdf-row"><div class="pdf-key">Satış Bedeli</div><div class="pdf-val">${c.fiyat?fmt(c.fiyat)+' ₺':'—'}</div></div>`;}
-  else if(c.type==='kira'){taraflar=`<div class="pdf-row"><div class="pdf-key">Kiraya Veren</div><div class="pdf-val">${esc(c.kiralayan)||'—'}</div></div><div class="pdf-row"><div class="pdf-key">Kiracı</div><div class="pdf-val">${esc(c.kiraci)||'—'}</div></div>`;mali=`<div class="pdf-row"><div class="pdf-key">Aylık Kira</div><div class="pdf-val">${c.kira?fmt(c.kira)+' ₺':'—'}</div></div>`;}
-  else{taraflar=`<div class="pdf-row"><div class="pdf-key">Kiraya Veren</div><div class="pdf-val">${esc(c.kiralayan)||'—'}</div></div><div class="pdf-row"><div class="pdf-key">Kiracı</div><div class="pdf-val">${esc(c.kiraci)||'—'}</div></div>`;mali='';}
-  document.getElementById('pdfContent').innerHTML=`${antet(esc(c.id))}<div class="pdf-title-block"><h2>${titles[c.type]}</h2><div class="pdf-type-bar">${icons[c.type]} ${c.type.toUpperCase()}</div></div><div class="pdf-ref-box"><div><div class="pdf-ref-k">No</div><div class="pdf-ref-v">${esc(c.id)}</div></div><div><div class="pdf-ref-k">Tarih</div><div class="pdf-ref-v">${esc(c.date)||'—'}</div></div><div><div class="pdf-ref-k">Danışman</div><div class="pdf-ref-v">${esc(c.createdByName)||'—'}</div></div></div><div class="pdf-tasınmaz-box">${taraflar}<div class="pdf-row"><div class="pdf-key">Adres</div><div class="pdf-val">${esc(c.adres)||'—'}</div></div>${mali}</div><div class="pdf-footer-bar"><span>Çelebioğlu Gayrimenkul</span><span>${esc(c.id)} — Arşiv Kopyası</span></div>`;
+
+  // Eğer tüm alanlar kaydedilmişse (yeni format) tam PDF oluştur
+  // Aksi halde eski özet görünümü göster
+  const hasFullData = c.type==='satis' ? !!c.f_satici : c.type==='kira' ? !!c.f_kiraci : !!c.f_tahliye_tarihi;
+
+  if(hasFullData){
+    // Geçici olarak form alanlarını doldur ve PDF oluştur
+    const saved={};
+    Object.keys(c).filter(k=>k.startsWith('f_')).forEach(k=>{
+      saved[k]=c[k];
+    });
+    // gv() yerine direkt veri döndüren geçici fonksiyon
+    const _origGv=window._gvOverride;
+    window._gvOverride=saved;
+    document.getElementById('pdfContent').innerHTML=buildPDF(c.type, c.id);
+    window._gvOverride=_origGv;
+  } else {
+    // Eski sözleşmeler için özet görünüm (önceki format)
+    const titles={satis:'GAYRİMENKUL SATIŞINA CAYMA AKÇELİ ARACILIK SÖZLEŞMESİ',kira:'KONUT KİRA SÖZLEŞMESİ',tahliye:'TAHLİYE TAAHHÜDÜ'};
+    const icons={satis:'🏡',kira:'🔑',tahliye:'🚪'};
+    let taraflar='',mali='';
+    if(c.type==='satis'){taraflar=`<div class="pdf-row"><div class="pdf-key">Satıcı</div><div class="pdf-val">${esc(c.satici)||'—'}</div></div><div class="pdf-row"><div class="pdf-key">Alıcı</div><div class="pdf-val">${esc(c.alici)||'—'}</div></div>`;mali=`<div class="pdf-row"><div class="pdf-key">Satış Bedeli</div><div class="pdf-val">${c.fiyat?fmt(c.fiyat)+' ₺':'—'}</div></div>`;}
+    else if(c.type==='kira'){taraflar=`<div class="pdf-row"><div class="pdf-key">Kiraya Veren</div><div class="pdf-val">${esc(c.kiralayan)||'—'}</div></div><div class="pdf-row"><div class="pdf-key">Kiracı</div><div class="pdf-val">${esc(c.kiraci)||'—'}</div></div>`;mali=`<div class="pdf-row"><div class="pdf-key">Aylık Kira</div><div class="pdf-val">${c.kira?fmt(c.kira)+' ₺':'—'}</div></div>`;}
+    else{taraflar=`<div class="pdf-row"><div class="pdf-key">Kiraya Veren</div><div class="pdf-val">${esc(c.kiralayan)||'—'}</div></div><div class="pdf-row"><div class="pdf-key">Kiracı</div><div class="pdf-val">${esc(c.kiraci)||'—'}</div></div>`;mali='';}
+    document.getElementById('pdfContent').innerHTML=`${antet(esc(c.id))}<div class="pdf-title-block"><h2>${titles[c.type]}</h2><div class="pdf-type-bar">${icons[c.type]} ${c.type.toUpperCase()}</div></div><div class="pdf-ref-box"><div><div class="pdf-ref-k">No</div><div class="pdf-ref-v">${esc(c.id)}</div></div><div><div class="pdf-ref-k">Tarih</div><div class="pdf-ref-v">${esc(c.date)||'—'}</div></div><div><div class="pdf-ref-k">Danışman</div><div class="pdf-ref-v">${esc(c.createdByName)||'—'}</div></div></div><div class="pdf-tasınmaz-box">${taraflar}<div class="pdf-row"><div class="pdf-key">Adres</div><div class="pdf-val">${esc(c.adres)||'—'}</div></div>${mali}</div><div class="pdf-footer-bar"><span>Çelebioğlu Gayrimenkul</span><span>${esc(c.id)} — Arşiv Kopyası</span></div>`;
+  }
   document.getElementById('pdfModal').classList.remove('hidden');
 }
 async function deleteContract(id){
