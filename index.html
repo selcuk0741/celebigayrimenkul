@@ -565,10 +565,8 @@ const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
 const auth = getAuth(fbApp);
 
-// Oturumu LOCAL olarak sakla — tarayıcı kapansa bile devam eder, refresh'te bozulmaz
 try { await setPersistence(auth, browserLocalPersistence); } catch(e){ console.warn('Persistence ayarlanamadı:', e); }
 
-// İkincil uygulama — kullanıcı oluştururken mevcut oturumu etkilememek için
 const secondaryApp = initializeSecondaryApp(firebaseConfig, 'secondary');
 const secondaryAuth = getAuth(secondaryApp);
 
@@ -601,11 +599,8 @@ async function fbDeleteContract(c){
   } catch(e){ console.error('Silme hatası:',e); }
 }
 
-// Kullanıcı profili Firestore'da 'users' koleksiyonunda tutulur
-// Şifreler artık Firebase Auth'ta — Firestore'da şifre yok
 async function fbSaveUserProfile(uid, profileData){
   try{
-    // Şifreyi asla Firestore'a kaydetme
     const {pass, ...safeData} = profileData;
     await setDoc(doc(db,'users',uid), safeData);
   } catch(e){ console.error('Profil kayıt hatası:',e); showToast('⚠️ Profil kaydedilemedi: '+e.message); }
@@ -636,18 +631,12 @@ async function fbDeleteUserProfile(uid){
 let users = [];
 let contracts = [];
 let currentUser = null, currentFilter = 'hepsi', currentSearchQ = '';
-// ── BAŞLANGIÇ: Tüm sayfaları gizle, loading göster ───────────────────────────
 document.getElementById('loginPage').classList.add('hidden');
 document.getElementById('appPage').classList.add('hidden');
 
-// ── AUTH STATE OBSERVER ───────────────────────────────────────────────────────
-// Firebase oturum durumunu kontrol eder.
-// İLK çağrıda (sayfa yüklenince) oturumu geri yükler.
-// Sonraki çağrılarda (kullanıcı ekleme gibi) müdahale etmez.
 let _authInitialized = false;
 
 onAuthStateChanged(auth, async (firebaseUser) => {
-  // İlk init: sayfa yeni yüklendi
   if(!_authInitialized){
     _authInitialized = true;
     if(firebaseUser){
@@ -664,8 +653,6 @@ onAuthStateChanged(auth, async (firebaseUser) => {
     }
     return;
   }
-  // Sonraki tetiklemeler: sadece logout durumunda login göster
-  // (kullanıcı ekleme sırasında secondaryAuth signOut tetikler — bunu yok say)
   if(!firebaseUser && currentUser === null){
     showLogin();
   }
@@ -724,7 +711,7 @@ async function doLogin(){
     }
 
     currentUser = { ...profile, uid: cred.user.uid, id: cred.user.uid };
-    _authInitialized = true; // onAuthStateChanged tekrar müdahale etmesin
+    _authInitialized = true;
     showApp();
 
   } catch(e){
@@ -747,7 +734,7 @@ async function doLogout(){
   currentUser = null;
   contracts = [];
   users = [];
-  _authInitialized = false; // Sonraki onAuthStateChanged login sayfasını göstersin
+  _authInitialized = false;
   try{ await signOut(auth); } catch(e){ console.error('Logout hatası:',e); }
 }
 document.getElementById('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
@@ -807,7 +794,6 @@ function d(val){return val||'……………'}
 
 function buildForm(type){
   const today=new Date().toISOString().slice(0,10);
-  const rp=()=>`oninput="renderPreview('${type}')"`;
 
   if(type==='tahliye'){return `
     <div class="form-section"><div class="fs-head"><span class="fs-icon">🚪</span><h3>Kiracı Bilgileri</h3></div><div class="fs-body">
@@ -986,7 +972,6 @@ async function _saveContract(type,docNo,durum){
     c.satici=gv('f_satici'); c.alici=gv('f_alici');
     c.adres=gv('f_adres')||[gv('f_mahalle'),gv('f_ilce'),gv('f_il')].filter(Boolean).join(', ');
     c.fiyat=gv('f_fiyat');
-    // Tüm satis form alanları
     c.f_araci_ad=gv('f_araci_ad'); c.f_araci_tc=gv('f_araci_tc');
     c.f_araci_adres=gv('f_araci_adres'); c.f_araci_tel=gv('f_araci_tel');
     c.f_araci_lisans=gv('f_araci_lisans');
@@ -1011,7 +996,6 @@ async function _saveContract(type,docNo,durum){
   } else if(type==='kira'){
     c.kiralayan=gv('f_kiralayan'); c.kiraci=gv('f_kiraci');
     c.adres=gv('f_adres'); c.kira=gv('f_kira');
-    // Tüm kira form alanları
     c.f_tarih=gv('f_tarih'); c.f_ilce=gv('f_ilce'); c.f_adres=gv('f_adres');
     c.f_kiralayan=gv('f_kiralayan'); c.f_kiralayan_tc=gv('f_kiralayan_tc');
     c.f_kiralayan_adres=gv('f_kiralayan_adres'); c.f_kiralayan_tel=gv('f_kiralayan_tel');
@@ -1029,7 +1013,6 @@ async function _saveContract(type,docNo,durum){
 
   } else {
     c.kiralayan=gv('f_kiralayan'); c.kiraci=gv('f_kiraci'); c.adres=gv('f_adres');
-    // Tüm tahliye form alanları
     c.f_kiraci=gv('f_kiraci'); c.f_kiraci_tc=gv('f_kiraci_tc');
     c.f_kiralayan=gv('f_kiralayan'); c.f_kiralayan_tc=gv('f_kiralayan_tc');
     c.f_il=gv('f_il'); c.f_ilce=gv('f_ilce'); c.f_mahalle=gv('f_mahalle');
@@ -1371,7 +1354,6 @@ function bar(lbl,val,max,color){const pct=Math.round((val/max)*100);return `<div
 
 // ── ADMİN ─────────────────────────────────────────────────────────────────────
 async function renderAdmin(){
-  // Kullanıcı profillerini Firestore'dan yükle (şifre içermez)
   users = await fbLoadAllUserProfiles();
   document.getElementById('adminUserCount').textContent=users.length;
   document.getElementById('adminAdminCount').textContent=users.filter(u=>u.role==='admin').length;
@@ -1404,18 +1386,14 @@ async function addUser(){
   btn.disabled=true; btn.textContent='Ekleniyor...';
 
   try{
-    // 1. Auth'ta kullanıcı oluştur
     const cred = await createUserWithEmailAndPassword(secondaryAuth, email, pass);
     const newUid = cred.user.uid;
 
-    // 2. İKİNCİL OTURUMU KAPATMADAN ÖNCE Firestore'a kaydet
     const profile = { name, email, role, active: true, createdAt: new Date().toISOString() };
     await fbSaveUserProfile(newUid, profile);
 
-    // 3. Şimdi ikincil oturumu kapat
     try { await signOut(secondaryAuth); } catch(e2) { /* önemli değil */ }
 
-    // 4. Başarı
     users.push({...profile, uid: newUid});
     closeAddUserModal();
     await renderAdmin();
@@ -1425,10 +1403,10 @@ async function addUser(){
   } catch(e){
     console.error('Kullanıcı ekleme hatası:', e.code, e.message);
     if(e.code==='auth/email-already-in-use'){
-      // Auth'ta var ama Firestore'da yoksa profili kurtarmayı dene
-      showToast('⚠️ Bu e-posta Auth'ta zaten kayıtlı. Firebase Console'dan UID'yi alıp Firestore'a ekleyin.');
+      // ✅ DÜZELTME: Tek tırnak yerine backtick kullanıldı
+      showToast(`⚠️ Bu e-posta Auth'ta zaten kayıtlı. Firebase Console'dan UID'yi alıp Firestore'a ekleyin.`);
     } else if(e.code==='auth/weak-password'){
-      showToast('⚠️ Şifre en az 6 karakter olmalıdır.');
+      showToast(`⚠️ Şifre en az 6 karakter olmalıdır.`);
     } else {
       showToast('⚠️ Kullanıcı eklenemedi: ' + e.message);
     }
@@ -1440,12 +1418,10 @@ async function removeUser(uid){
   if(!uid||uid===currentUser?.uid){showToast('Kendi hesabınızı silemezsiniz.');return;}
   if(!confirm('Bu kullanıcıyı kalıcı olarak silmek istediğinizden emin misiniz?'))return;
   try{
-    // Firestore'dan tamamen sil
     await deleteDoc(doc(db,'users',uid));
     users = users.filter(u=>u.uid!==uid);
     await renderAdmin();
     showToast('✓ Kullanıcı silindi.');
-    // Not: Firebase Authentication kaydı Firebase Console'dan manuel silinmelidir.
   } catch(e){
     showToast('⚠️ İşlem başarısız: '+e.message);
   }
@@ -1457,29 +1433,24 @@ async function fixMissingProfile(e){
   const role  = document.getElementById('newUserRole').value;
   if(!email||!name){ showToast('E-posta ve ad alanlarını doldurun.'); return; }
 
-  // Auth'ta zaten var ama UID'yi bilmiyoruz — kullanıcıyı sil ve yeniden oluştur
   const pass = document.getElementById('newUserPass').value;
   if(!pass){ showToast('Şifreyi de girin.'); return; }
 
   showToast('⏳ Profil kurtarılıyor...');
   try {
-    // Önce mevcut secondary kullanıcıyı sil
     try { await signOut(secondaryAuth); } catch(e2){}
 
-    // Kullanıcıyı yeniden oluşturmaya çalış — eğer başarısız olursa signIn ile UID al
     let uid;
     try {
       const cred = await createUserWithEmailAndPassword(secondaryAuth, email, pass);
       uid = cred.user.uid;
     } catch(e3) {
       if(e3.code === 'auth/email-already-in-use'){
-        // Şifreyle giriş yap, UID'yi al
         const cred2 = await signInWithEmailAndPassword(secondaryAuth, email, pass);
         uid = cred2.user.uid;
       } else { throw e3; }
     }
 
-    // Firestore'a profili kaydet
     const profile = { name, email, role, active: true, createdAt: new Date().toISOString() };
     await fbSaveUserProfile(uid, profile);
     try { await signOut(secondaryAuth); } catch(e4){}
