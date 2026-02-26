@@ -534,10 +534,6 @@ tr:hover td{background:var(--bg2)}
       <div class="fg"><label>Şifre</label><input type="password" id="newUserPass" placeholder="Şifre"></div>
       <div class="fg"><label>Rol</label><select id="newUserRole"><option value="user">Kullanıcı</option><option value="admin">Yönetici</option></select></div>
     </div>
-    <div style="padding:0 24px 16px;font-size:12px;color:var(--muted);border-top:1px solid var(--border);padding-top:14px;margin-top:4px">
-      <strong>Sorun mu var?</strong> "Zaten kayıtlı" hatası alıp kullanıcı panelde görünmüyorsa: 
-      <a href="#" onclick="fixMissingProfile(event)" style="color:var(--brand-blue)">Profili Kurtarmayı Dene</a>
-    </div>
     <div class="modal-foot">
       <button class="btn-secondary" onclick="closeAddUserModal()">İptal</button>
       <button class="btn-primary" onclick="addUser()">Ekle</button>
@@ -550,9 +546,7 @@ tr:hover td{background:var(--bg2)}
 // ── FİREBASE ──────────────────────────────────────────────────────────────────
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword, browserLocalPersistence, setPersistence } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { initializeApp as initializeSecondaryApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getFirestore as getSecondaryFirestore } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, browserLocalPersistence, setPersistence } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyBdMnwQB9UD4-0xzx_RtxrQjePu7n3XeeM",
@@ -566,11 +560,29 @@ const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
 const auth = getAuth(fbApp);
 
-try { await setPersistence(auth, browserLocalPersistence); } catch(e){ console.warn('Persistence ayarlanamadı:', e); }
+// Oturumu LOCAL olarak sakla — tarayıcı kapansa bile devam eder, refresh'te bozulmaz
+await setPersistence(auth, browserLocalPersistence);
 
-const secondaryApp = initializeSecondaryApp(firebaseConfig, 'secondary');
-const secondaryAuth = getAuth(secondaryApp);
-const secondaryDb = getSecondaryFirestore(secondaryApp); // İkincil Firestore — secondaryAuth token'ıyla yazar
+// REST API ile kullanıcı oluşturma — admin oturumuna hiç dokunmaz
+async function createAuthUserViaREST(email, password) {
+  const url = `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${firebaseConfig.apiKey}`;
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password, returnSecureToken: false })
+  });
+  const data = await resp.json();
+  if (!resp.ok) {
+    const msg = data?.error?.message || 'UNKNOWN_ERROR';
+    const codeMap = {
+      'EMAIL_EXISTS': 'auth/email-already-in-use',
+      'WEAK_PASSWORD_: PASSWORD_SHOULD_BE_AT_LEAST_6_CHARACTERS': 'auth/weak-password',
+      'INVALID_EMAIL': 'auth/invalid-email',
+    };
+    throw { code: codeMap[msg] || 'auth/unknown', message: msg };
+  }
+  return data.localId; // uid döner
+}
 
 // ── GÜVENLİ XSS KORUMASI ─────────────────────────────────────────────────────
 function esc(str){
@@ -601,11 +613,11 @@ async function fbDeleteContract(c){
   } catch(e){ console.error('Silme hatası:',e); }
 }
 
+// Kullanıcı profili Firestore'da 'users' koleksiyonunda tutulur
+// Şifreler Firebase Auth'ta — Firestore'da şifre yok
 async function fbSaveUserProfile(uid, profileData){
-  try{
-    const {pass, ...safeData} = profileData;
-    await setDoc(doc(db,'users',uid), safeData);
-  } catch(e){ console.error('Profil kayıt hatası:',e); showToast('⚠️ Profil kaydedilemedi: '+e.message); }
+  const {pass, ...safeData} = profileData;
+  await setDoc(doc(db,'users',uid), safeData); // hata fırlatır, caller yakalar
 }
 async function fbLoadUserProfile(uid){
   try{
@@ -633,9 +645,11 @@ async function fbDeleteUserProfile(uid){
 let users = [];
 let contracts = [];
 let currentUser = null, currentFilter = 'hepsi', currentSearchQ = '';
+// ── BAŞLANGIÇ: Tüm sayfaları gizle, loading göster ───────────────────────────
 document.getElementById('loginPage').classList.add('hidden');
 document.getElementById('appPage').classList.add('hidden');
 
+// ── AUTH STATE OBSERVER ───────────────────────────────────────────────────────
 let _authInitialized = false;
 
 onAuthStateChanged(auth, async (firebaseUser) => {
@@ -655,6 +669,7 @@ onAuthStateChanged(auth, async (firebaseUser) => {
     }
     return;
   }
+  // Sonraki tetiklemeler: sadece gerçek logout'ta login göster
   if(!firebaseUser && currentUser === null){
     showLogin();
   }
@@ -713,7 +728,7 @@ async function doLogin(){
     }
 
     currentUser = { ...profile, uid: cred.user.uid, id: cred.user.uid };
-    _authInitialized = true;
+    _authInitialized = true; // onAuthStateChanged tekrar müdahale etmesin
     showApp();
 
   } catch(e){
@@ -736,7 +751,7 @@ async function doLogout(){
   currentUser = null;
   contracts = [];
   users = [];
-  _authInitialized = false;
+  _authInitialized = false; // Sonraki onAuthStateChanged login sayfasını göstersin
   try{ await signOut(auth); } catch(e){ console.error('Logout hatası:',e); }
 }
 document.getElementById('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
@@ -796,6 +811,7 @@ function d(val){return val||'……………'}
 
 function buildForm(type){
   const today=new Date().toISOString().slice(0,10);
+  const rp=()=>`oninput="renderPreview('${type}')"`;
 
   if(type==='tahliye'){return `
     <div class="form-section"><div class="fs-head"><span class="fs-icon">🚪</span><h3>Kiracı Bilgileri</h3></div><div class="fs-body">
@@ -969,61 +985,9 @@ async function saveDraft(){
 }
 async function _saveContract(type,docNo,durum){
   const c={id:docNo,type,date:new Date().toISOString().slice(0,10),durum,createdBy:currentUser.uid,assignedTo:currentUser.uid,createdByName:currentUser.name};
-
-  if(type==='satis'){
-    c.satici=gv('f_satici'); c.alici=gv('f_alici');
-    c.adres=gv('f_adres')||[gv('f_mahalle'),gv('f_ilce'),gv('f_il')].filter(Boolean).join(', ');
-    c.fiyat=gv('f_fiyat');
-    c.f_araci_ad=gv('f_araci_ad'); c.f_araci_tc=gv('f_araci_tc');
-    c.f_araci_adres=gv('f_araci_adres'); c.f_araci_tel=gv('f_araci_tel');
-    c.f_araci_lisans=gv('f_araci_lisans');
-    c.f_satici=gv('f_satici'); c.f_satici_tc=gv('f_satici_tc');
-    c.f_satici_adres=gv('f_satici_adres'); c.f_satici_email=gv('f_satici_email');
-    c.f_satici_tel=gv('f_satici_tel');
-    c.f_alici=gv('f_alici'); c.f_alici_tc=gv('f_alici_tc');
-    c.f_alici_adres=gv('f_alici_adres'); c.f_alici_email=gv('f_alici_email');
-    c.f_alici_tel=gv('f_alici_tel');
-    c.f_tip=gv('f_tip'); c.f_kullanim=gv('f_kullanim');
-    c.f_il=gv('f_il'); c.f_ilce=gv('f_ilce'); c.f_mahalle=gv('f_mahalle');
-    c.f_cadde=gv('f_cadde'); c.f_sokak=gv('f_sokak'); c.f_kapi_no=gv('f_kapi_no');
-    c.f_ada=gv('f_ada'); c.f_parsel=gv('f_parsel'); c.f_bb_no=gv('f_bb_no');
-    c.f_m2=gv('f_m2'); c.f_ekb=gv('f_ekb'); c.f_hasar=gv('f_hasar');
-    c.f_fiyat=gv('f_fiyat'); c.f_kapora=gv('f_kapora');
-    c.f_nakit=gv('f_nakit'); c.f_kredi=gv('f_kredi');
-    c.f_kredi_banka=gv('f_kredi_banka'); c.f_kalan=gv('f_kalan');
-    c.f_komisyon=gv('f_komisyon'); c.f_devir_masraf=gv('f_devir_masraf');
-    c.f_tapu_tarihi=gv('f_tapu_tarihi'); c.f_sozlesme_yeri=gv('f_sozlesme_yeri');
-    c.f_notlar=gv('f_notlar');
-
-  } else if(type==='kira'){
-    c.kiralayan=gv('f_kiralayan'); c.kiraci=gv('f_kiraci');
-    c.adres=gv('f_adres'); c.kira=gv('f_kira');
-    c.f_tarih=gv('f_tarih'); c.f_ilce=gv('f_ilce'); c.f_adres=gv('f_adres');
-    c.f_kiralayan=gv('f_kiralayan'); c.f_kiralayan_tc=gv('f_kiralayan_tc');
-    c.f_kiralayan_adres=gv('f_kiralayan_adres'); c.f_kiralayan_tel=gv('f_kiralayan_tel');
-    c.f_kiralayan_iban=gv('f_kiralayan_iban'); c.f_banka_adi=gv('f_banka_adi');
-    c.f_kiraci=gv('f_kiraci'); c.f_kiraci_tc=gv('f_kiraci_tc');
-    c.f_kiraci_adres=gv('f_kiraci_adres'); c.f_kiraci_tel=gv('f_kiraci_tel');
-    c.f_kefil=gv('f_kefil'); c.f_kefil_tc=gv('f_kefil_tc');
-    c.f_kefil_adres=gv('f_kefil_adres'); c.f_kefil_tel=gv('f_kefil_tel');
-    c.f_tip=gv('f_tip'); c.f_kira=gv('f_kira');
-    c.f_kira_yillik=gv('f_kira_yillik'); c.f_depozito=gv('f_depozito');
-    c.f_kira_bas=gv('f_kira_bas'); c.f_kira_sure=gv('f_kira_sure');
-    c.f_artis=gv('f_artis'); c.f_odeme_gun=gv('f_odeme_gun');
-    c.f_demirbas=gv('f_demirbas');
-    c.f_araci_ad=gv('f_araci_ad'); c.f_araci_tc=gv('f_araci_tc');
-
-  } else {
-    c.kiralayan=gv('f_kiralayan'); c.kiraci=gv('f_kiraci'); c.adres=gv('f_adres');
-    c.f_kiraci=gv('f_kiraci'); c.f_kiraci_tc=gv('f_kiraci_tc');
-    c.f_kiralayan=gv('f_kiralayan'); c.f_kiralayan_tc=gv('f_kiralayan_tc');
-    c.f_il=gv('f_il'); c.f_ilce=gv('f_ilce'); c.f_mahalle=gv('f_mahalle');
-    c.f_ada=gv('f_ada'); c.f_parsel=gv('f_parsel'); c.f_bb_no=gv('f_bb_no');
-    c.f_adres=gv('f_adres');
-    c.f_kira_sozlesme_tarihi=gv('f_kira_sozlesme_tarihi');
-    c.f_tahliye_tarihi=gv('f_tahliye_tarihi'); c.f_tarih=gv('f_tarih');
-  }
-
+  if(type==='satis'){c.satici=gv('f_satici');c.alici=gv('f_alici');c.adres=gv('f_adres')||[gv('f_mahalle'),gv('f_ilce'),gv('f_il')].filter(Boolean).join(', ');c.fiyat=gv('f_fiyat');}
+  else if(type==='kira'){c.kiralayan=gv('f_kiralayan');c.kiraci=gv('f_kiraci');c.adres=gv('f_adres');c.kira=gv('f_kira');}
+  else{c.kiralayan=gv('f_kiralayan');c.kiraci=gv('f_kiraci');c.adres=gv('f_adres');}
   showToast('⏳ Kaydediliyor...');
   await fbSaveContract(c);
   await fbLoadContracts();
@@ -1364,7 +1328,7 @@ async function renderAdmin(){
     <td><div style="display:flex;align-items:center;gap:10px"><div class="staff-avatar">${esc(u.name||'?').split(' ').map(x=>x[0]).join('').slice(0,2)}</div>${esc(u.name)}</div></td>
     <td style="font-family:'DM Mono',monospace;font-size:12px">${esc(u.email)}</td>
     <td><span class="badge ${u.role==='admin'?'badge-admin':'badge-taslak'}">${u.role==='admin'?'Yönetici':'Danışman'}</span></td>
-    <td>${u.active===false?'<span class="badge badge-aracilik">Devre Dışı</span>':'<span class="badge badge-ok">Aktif</span>'}</td>
+    <td><span class="badge badge-ok">${u.active===false?'Devre Dışı':'Aktif'}</span></td>
     <td>${u.uid!==currentUser?.uid?`<button class="btn-sm danger" onclick="removeUser('${esc(u.uid)}')">Kaldır</button>`:'<span style="font-size:12px;color:var(--muted)">Sen</span>'}</td>
   </tr>`).join('');
   const danismanlar=users.filter(u=>u.role==='user');
@@ -1381,38 +1345,47 @@ async function addUser(){
   const email = document.getElementById('newUserEmail').value.trim();
   const pass  = document.getElementById('newUserPass').value;
   const role  = document.getElementById('newUserRole').value;
-  if(!name||!email||!pass){showToast('Tüm alanları doldurun.');return;}
-  if(pass.length < 6){showToast('Şifre en az 6 karakter olmalıdır.');return;}
+  if(!name||!email||!pass){showToast('⚠️ Tüm alanları doldurun.');return;}
+  if(pass.length < 6){showToast('⚠️ Şifre en az 6 karakter olmalıdır.');return;}
 
   const btn = document.querySelector('#addUserModal .btn-primary');
   btn.disabled=true; btn.textContent='Ekleniyor...';
 
+  let uid = null;
   try{
-    // 1. İkincil auth ile yeni kullanıcıyı oluştur
-    const cred = await createUserWithEmailAndPassword(secondaryAuth, email, pass);
-    const newUid = cred.user.uid;
+    // 1. Firebase Auth REST API ile kullanıcı oluştur — admin oturumuna hiç dokunmaz
+    uid = await createAuthUserViaREST(email, pass);
 
-    // 2. secondaryDb kullan — secondaryAuth token'ıyla yazar, isOwner(uid) geçer
-    const profile = { name, email, role, active: true, createdAt: new Date().toISOString() };
-    await setDoc(doc(secondaryDb, 'users', newUid), profile);
+    // 2. Firestore'a profil kaydet
+    const profile = {
+      name,
+      email,
+      role,
+      active: true,
+      createdAt: new Date().toISOString()
+    };
+    await setDoc(doc(db, 'users', uid), profile);
 
-    // 3. İkincil oturumu kapat
-    try { await signOut(secondaryAuth); } catch(e2) {}
-
-    users.push({...profile, uid: newUid});
+    // 3. UI güncelle
+    users.push({...profile, uid});
     closeAddUserModal();
-    await renderAdmin();
-    showToast('✓ ' + name + ' eklendi!');
     ['newUserName','newUserEmail','newUserPass'].forEach(id=>{document.getElementById(id).value='';});
+    document.getElementById('newUserRole').value='user';
+    await renderAdmin();
+    showToast('✓ ' + name + ' başarıyla eklendi!');
 
   } catch(e){
-    console.error('Kullanıcı ekleme hatası:', e.code, e.message);
+    console.error('Kullanıcı ekleme hatası:', e);
     if(e.code==='auth/email-already-in-use'){
-      showToast(`⚠️ Bu e-posta zaten kayıtlı. "Profili Kurtarmayı Dene" linkine tıklayın.`);
+      showToast('⚠️ Bu e-posta adresi zaten kayıtlı.');
     } else if(e.code==='auth/weak-password'){
-      showToast(`⚠️ Şifre en az 6 karakter olmalıdır.`);
+      showToast('⚠️ Şifre en az 6 karakter olmalıdır.');
+    } else if(e.code==='auth/invalid-email'){
+      showToast('⚠️ Geçersiz e-posta adresi.');
+    } else if(e.message && e.message.includes('permission')){
+      showToast('⚠️ Firestore yetki hatası. Güvenlik kurallarını kontrol edin.');
     } else {
-      showToast('⚠️ Kullanıcı eklenemedi: ' + e.message);
+      showToast('⚠️ Kullanıcı eklenemedi: ' + (e.message || e.code || 'Bilinmeyen hata'));
     }
   } finally {
     btn.disabled=false; btn.textContent='Ekle';
@@ -1430,47 +1403,6 @@ async function removeUser(uid){
     showToast('⚠️ İşlem başarısız: '+e.message);
   }
 }
-async function fixMissingProfile(e){
-  e.preventDefault();
-  const email = document.getElementById('newUserEmail').value.trim();
-  const name  = document.getElementById('newUserName').value.trim();
-  const role  = document.getElementById('newUserRole').value;
-  if(!email||!name){ showToast('E-posta ve ad alanlarını doldurun.'); return; }
-
-  const pass = document.getElementById('newUserPass').value;
-  if(!pass){ showToast('Şifreyi de girin.'); return; }
-
-  showToast('⏳ Profil kurtarılıyor...');
-  try {
-    try { await signOut(secondaryAuth); } catch(e2){}
-
-    let uid;
-    try {
-      const cred = await createUserWithEmailAndPassword(secondaryAuth, email, pass);
-      uid = cred.user.uid;
-    } catch(e3) {
-      if(e3.code === 'auth/email-already-in-use'){
-        const cred2 = await signInWithEmailAndPassword(secondaryAuth, email, pass);
-        uid = cred2.user.uid;
-      } else { throw e3; }
-    }
-
-    const profile = { name, email, role, active: true, createdAt: new Date().toISOString() };
-    // secondaryDb ile yaz — secondaryAuth token'ı geçerli olduğu için isOwner(uid) kuralı geçer
-    await setDoc(doc(secondaryDb, 'users', uid), profile);
-    try { await signOut(secondaryAuth); } catch(e4){}
-
-    users.push({...profile, uid});
-    closeAddUserModal();
-    await renderAdmin();
-    showToast('✓ ' + name + ' profili kurtarıldı!');
-    ['newUserName','newUserEmail','newUserPass'].forEach(id=>{document.getElementById(id).value='';});
-  } catch(err){
-    console.error('Kurtarma hatası:', err);
-    showToast('⚠️ Kurtarılamadı: ' + err.message);
-  }
-}
-window.fixMissingProfile=fixMissingProfile;
 window.openAddUserModal=openAddUserModal;
 window.closeAddUserModal=closeAddUserModal;
 window.addUser=addUser;
