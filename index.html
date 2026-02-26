@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Çelebioğlu Gayrimenkul — Sözleşme Yönetim Sistemi</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.6.0/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/docx/7.8.2/docx.js"></script>
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -505,6 +509,19 @@ tr:hover td{background:var(--bg2)}
       <div class="tbl-wrap">
         <div class="tbl-head"><h3>📊 Danışman Performansı</h3></div>
         <table><thead><tr><th>Danışman</th><th style="text-align:center">Toplam</th><th style="text-align:center">Satış</th><th style="text-align:center">Kira</th><th style="text-align:center">Tahliye</th></tr></thead><tbody id="adminPerfTable"></tbody></table>
+      </div>
+      <div class="tbl-wrap">
+        <div class="tbl-head">
+          <h3>💾 Sözleşme Yedeği</h3>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn-sm" onclick="exportExcel()" style="background:#1a4a2e;color:#fff;border-color:#1a4a2e">📊 Excel (.xlsx)</button>
+            <button class="btn-sm" onclick="exportWord()" style="background:#1a2d5a;color:#fff;border-color:#1a2d5a">📝 Word (.docx)</button>
+            <button class="btn-sm" onclick="exportPDF()" style="background:#4a1a1a;color:#fff;border-color:#4a1a1a">📄 PDF (.pdf)</button>
+          </div>
+        </div>
+        <div style="padding:16px 22px;font-size:13px;color:var(--muted)">
+          Tüm sözleşmeleri seçtiğiniz formatta bilgisayarınıza indirin. Düzenli yedek almanız önerilir.
+        </div>
       </div>
     </div>
   </div>
@@ -1391,6 +1408,118 @@ window.openAddUserModal=openAddUserModal;
 window.closeAddUserModal=closeAddUserModal;
 window.addUser=addUser;
 window.removeUser=removeUser;
+
+// ── YEDEK / EXPORT ───────────────────────────────────────────────────────────
+function getExportRows(){
+  const turler={satis:'Satış',kira:'Kira',tahliye:'Tahliye'};
+  const durumlar={tamamlandi:'Tamamlandı',taslak:'Taslak'};
+  return contracts.map(c=>({
+    'Sözleşme No': c.id||'',
+    'Tür': turler[c.type]||c.type||'',
+    'Tarih': c.date||'',
+    'Durum': durumlar[c.durum]||c.durum||'',
+    'Satıcı / Kiraya Veren': c.satici||c.kiralayan||'',
+    'Alıcı / Kiracı': c.alici||c.kiraci||'',
+    'Adres': c.adres||'',
+    'Bedel (₺)': c.fiyat||c.kira||'',
+    'Danışman': c.createdByName||''
+  }));
+}
+
+function exportExcel(){
+  if(!contracts.length){showToast('⚠️ Henüz sözleşme yok.');return;}
+  const rows=getExportRows();
+  const ws=XLSX.utils.json_to_sheet(rows);
+  ws['!cols']=[{wch:18},{wch:10},{wch:12},{wch:12},{wch:24},{wch:24},{wch:32},{wch:14},{wch:18}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Sözleşmeler');
+  const tarih=new Date().toLocaleDateString('tr-TR').replace(/\./g,'-');
+  XLSX.writeFile(wb,`celebigayrimenkul_yedek_${tarih}.xlsx`);
+  showToast('✓ Excel dosyası indirildi.');
+}
+
+async function exportWord(){
+  if(!contracts.length){showToast('⚠️ Henüz sözleşme yok.');return;}
+  showToast('⏳ Word dosyası hazırlanıyor...');
+  try{
+    const {Document,Packer,Paragraph,Table,TableRow,TableCell,TextRun,WidthType,AlignmentType,BorderStyle,ShadingType}=window.docx;
+    const rows=getExportRows();
+    const headers=Object.keys(rows[0]);
+    const border={style:BorderStyle.SINGLE,size:1,color:'CCCCCC'};
+    const borders={top:border,bottom:border,left:border,right:border};
+    const colW=Math.floor(9360/headers.length);
+
+    const headerRow=new TableRow({children:headers.map(h=>new TableCell({
+      borders,width:{size:colW,type:WidthType.DXA},
+      shading:{fill:'1A1A2E',type:ShadingType.CLEAR},
+      margins:{top:80,bottom:80,left:100,right:100},
+      children:[new Paragraph({children:[new TextRun({text:h,bold:true,color:'FFFFFF',size:18,font:'Arial'})]})]
+    }))});
+
+    const dataRows=rows.map(r=>new TableRow({children:Object.values(r).map(v=>new TableCell({
+      borders,width:{size:colW,type:WidthType.DXA},
+      margins:{top:60,bottom:60,left:100,right:100},
+      children:[new Paragraph({children:[new TextRun({text:String(v),size:16,font:'Arial'})]})]
+    }))}));
+
+    const tarih=new Date().toLocaleDateString('tr-TR');
+    const doc=new Document({sections:[{
+      properties:{page:{size:{width:21000,height:29700},margin:{top:1000,right:800,bottom:1000,left:800}}},
+      children:[
+        new Paragraph({children:[new TextRun({text:'Çelebioğlu Gayrimenkul — Sözleşme Arşivi',bold:true,size:28,font:'Arial',color:'1A1A2E'})],spacing:{after:200}}),
+        new Paragraph({children:[new TextRun({text:`Oluşturma Tarihi: ${tarih} | Toplam: ${contracts.length} sözleşme`,size:18,font:'Arial',color:'6B7A99'})],spacing:{after:400}}),
+        new Table({width:{size:9360,type:WidthType.DXA},columnWidths:headers.map(()=>colW),rows:[headerRow,...dataRows]})
+      ]
+    }]});
+
+    const buf=await Packer.toBlob(doc);
+    const url=URL.createObjectURL(buf);
+    const a=document.createElement('a');
+    const t2=new Date().toLocaleDateString('tr-TR').replace(/\./g,'-');
+    a.href=url;a.download=`celebigayrimenkul_yedek_${t2}.docx`;a.click();
+    URL.revokeObjectURL(url);
+    showToast('✓ Word dosyası indirildi.');
+  }catch(e){console.error(e);showToast('⚠️ Word oluşturulamadı: '+e.message);}
+}
+
+function exportPDF(){
+  if(!contracts.length){showToast('⚠️ Henüz sözleşme yok.');return;}
+  try{
+    const {jsPDF}=window.jspdf;
+    const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+    const rows=getExportRows();
+    const headers=Object.keys(rows[0]);
+    const tarih=new Date().toLocaleDateString('tr-TR');
+
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(14);
+    doc.setTextColor(26,26,46);
+    doc.text('Celebioglu Gayrimenkul - Sozlesme Arsivi',14,15);
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(9);
+    doc.setTextColor(107,122,153);
+    doc.text(`Tarih: ${tarih} | Toplam: ${contracts.length} sozlesme`,14,22);
+
+    doc.autoTable({
+      startY:28,
+      head:[headers],
+      body:rows.map(r=>Object.values(r).map(v=>String(v))),
+      styles:{fontSize:7,font:'helvetica',cellPadding:2,overflow:'linebreak'},
+      headStyles:{fillColor:[26,26,46],textColor:255,fontStyle:'bold'},
+      alternateRowStyles:{fillColor:[242,244,248]},
+      margin:{left:14,right:14},
+      tableWidth:'auto'
+    });
+
+    const t2=new Date().toLocaleDateString('tr-TR').replace(/\./g,'-');
+    doc.save(`celebigayrimenkul_yedek_${t2}.pdf`);
+    showToast('✓ PDF dosyası indirildi.');
+  }catch(e){console.error(e);showToast('⚠️ PDF oluşturulamadı: '+e.message);}
+}
+
+window.exportExcel=exportExcel;
+window.exportWord=exportWord;
+window.exportPDF=exportPDF;
 
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
 </script>
