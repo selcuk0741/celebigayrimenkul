@@ -1,0 +1,1527 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Çelebioğlu Gayrimenkul — Sözleşme Yönetim Sistemi</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.6.0/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/docx/7.8.2/docx.js"></script>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#f2f4f8;--bg2:#e6eaf2;--surface:#fff;--surface2:#f7f8fc;
+  --dark:#1a1a2e;--dark2:#16213e;
+  --brand-blue:#4a9fd4;--brand-teal:#2dd4bf;
+  --brand-orange:#c87941;
+  --gold:#c9a84c;--gold2:#e0c060;
+  --accent:var(--brand-blue);
+  --text:#1e2a3a;--muted:#6b7a99;--border:#d4dae8;
+  --shadow:0 2px 16px rgba(26,26,46,.08);--shadow-lg:0 8px 40px rgba(26,26,46,.16);
+  --r:13px;
+  --green:#1a4a2e;--green-bg:#e8f4ec;
+  --blue:#1a2d5a;--blue-bg:#e8ecf4;
+  --red:#4a1a1a;--red-bg:#f4e8e8;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+button{cursor:pointer;border:none;outline:none;font-family:inherit}
+input,select,textarea{font-family:inherit;outline:none}
+.hidden{display:none!important}
+#loadingScreen{position:fixed;inset:0;background:var(--dark);display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:16px}
+.ls-spinner{width:40px;height:40px;border:3px solid rgba(201,168,76,.2);border-top-color:#c9a84c;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ls-text{color:rgba(255,255,255,.5);font-size:13px;letter-spacing:1px}
+
+/* LOGIN */
+#loginPage{min-height:100vh;display:flex;align-items:stretch}
+.login-left{flex:1;background:var(--dark);display:flex;flex-direction:column;justify-content:center;padding:70px;position:relative;overflow:hidden}
+.login-left::before{content:'';position:absolute;top:-120px;right:-120px;width:500px;height:500px;border-radius:50%;background:radial-gradient(circle,rgba(201,168,76,.15),transparent 65%)}
+.login-left::after{content:'';position:absolute;bottom:-80px;left:-80px;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(201,168,76,.08),transparent 65%)}
+.ll-brand{display:flex;align-items:center;gap:14px;margin-bottom:64px;position:relative;z-index:1}
+.ll-icon{width:54px;height:54px;background:#0d1321;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 20px rgba(201,168,76,.3);border:1px solid rgba(201,168,76,.2)}
+.ll-name{line-height:1.2}
+.ll-name-main{display:block;font-size:20px;font-weight:800;letter-spacing:2px;background:linear-gradient(90deg,#4a9fd4,#2dd4bf);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.ll-name-sub{display:block;font-size:10px;font-weight:700;letter-spacing:3px;color:#c87941;margin-top:3px}
+.ll-hero{position:relative;z-index:1}
+.ll-hero h2{font-family:'Playfair Display',serif;font-size:44px;color:#fff;line-height:1.15;margin-bottom:18px}
+.ll-hero h2 em{font-style:italic;color:var(--gold2)}
+.ll-hero p{color:rgba(255,255,255,.48);font-size:15px;line-height:1.75;max-width:380px}
+.ll-stats{display:flex;gap:48px;margin-top:56px;position:relative;z-index:1}
+.ls-num{font-family:'Playfair Display',serif;font-size:30px;color:var(--gold2)}
+.ls-lbl{font-size:11px;color:rgba(255,255,255,.38);margin-top:2px}
+.login-right{width:490px;background:var(--surface);display:flex;align-items:center;justify-content:center;padding:60px}
+.lf-wrap{width:100%}
+.lf-wrap h3{font-family:'Playfair Display',serif;font-size:30px;color:var(--dark);margin-bottom:6px}
+.lf-wrap>p{color:var(--muted);font-size:14px;margin-bottom:40px}
+.fg{margin-bottom:20px}
+.fg label{display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px}
+.fg input,.fg select{width:100%;padding:14px 18px;border:1.5px solid var(--border);border-radius:10px;font-size:15px;color:var(--dark);background:var(--bg);transition:.2s}
+.fg input:focus,.fg select:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,168,76,.15)}
+.login-btn{width:100%;padding:15px;background:linear-gradient(135deg,var(--dark),var(--dark2));color:#fff;border-radius:10px;font-size:15px;font-weight:600;transition:.2s;margin-top:6px}
+.login-btn:hover{opacity:.88}.login-btn:active{transform:scale(.99)}
+.login-err{display:none;background:#fff0f0;border:1px solid #ffcdd2;color:#c0392b;font-size:13px;text-align:center;margin-top:14px;padding:10px 14px;border-radius:8px;font-weight:500}
+.login-hint{text-align:center;margin-top:22px;font-size:13px;color:var(--muted)}
+.login-hint code{background:var(--bg2);padding:2px 8px;border-radius:6px;font-family:'DM Mono',monospace;font-size:11px;color:var(--dark)}
+
+/* APP LAYOUT */
+#appPage{display:flex;min-height:100vh}
+.sidebar{width:258px;background:var(--dark);display:flex;flex-direction:column;padding:26px 0;position:fixed;height:100vh;top:0;left:0;z-index:200}
+.sb-brand{display:flex;align-items:center;gap:12px;padding:0 22px 26px;border-bottom:1px solid rgba(255,255,255,.07)}
+.sb-icon{width:40px;height:40px;background:#0d1321;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid rgba(201,168,76,.25)}
+.sb-nav{flex:1;padding:18px 10px;overflow-y:auto}
+.sb-section{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.28);padding:0 12px;margin:16px 0 7px}
+.nav-item{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:9px;cursor:pointer;color:rgba(255,255,255,.52);font-size:13.5px;font-weight:500;transition:.2s;margin-bottom:1px;user-select:none}
+.nav-item:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.82)}
+.nav-item.active{background:linear-gradient(135deg,rgba(74,159,212,.22),rgba(45,212,191,.12));color:#4a9fd4}
+.nav-icon{font-size:16px;width:20px;text-align:center}
+.sb-user{padding:14px 22px;border-top:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:11px}
+.ua{width:35px;height:35px;background:linear-gradient(135deg,var(--brand-blue),var(--brand-teal));border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0}
+.ui-name{font-size:13px;color:#fff;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ui-role{font-size:11px;color:rgba(255,255,255,.38)}
+.logout-btn{background:none;color:rgba(255,255,255,.28);font-size:15px;padding:4px;margin-left:auto;transition:.2s}
+.logout-btn:hover{color:rgba(255,255,255,.65)}
+.main{margin-left:258px;flex:1;min-height:100vh;padding:34px 38px}
+
+/* PAGE HEADER */
+.ph{margin-bottom:32px}
+.ph h1{font-family:'Playfair Display',serif;font-size:28px;color:var(--dark);margin-bottom:4px}
+.ph p{color:var(--muted);font-size:14px}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-bottom:32px}
+.stat-card{background:var(--surface);border-radius:var(--r);padding:22px;box-shadow:var(--shadow);border:1px solid var(--border);transition:.2s}
+.stat-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+.sc-icon{font-size:22px;margin-bottom:10px}
+.sc-num{font-family:'Playfair Display',serif;font-size:30px;color:var(--dark)}
+.sc-lbl{font-size:12px;color:var(--muted);margin-top:2px}
+
+/* CONTRACT TYPE CARDS */
+.ctype-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-bottom:32px}
+.ctype-btn{padding:26px 22px;border-radius:var(--r);display:flex;flex-direction:column;align-items:flex-start;gap:9px;transition:.2s;border:1.5px solid;text-align:left;background:#fff}
+.ctype-btn:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg)}
+.ctype-btn.satis{border-color:#b8d4c4}.ctype-btn.kira{border-color:#b8c4d4}.ctype-btn.aracilik{border-color:#d4b8b8}
+.ctype-icon{font-size:30px}
+.ctype-name{font-family:'Playfair Display',serif;font-size:17px;color:var(--dark)}
+.ctype-desc{font-size:12px;color:var(--muted);line-height:1.55}
+.ctype-arr{font-size:16px;margin-top:6px;transition:.2s}
+.ctype-btn:hover .ctype-arr{transform:translateX(4px)}
+
+/* TABLE */
+.tbl-wrap{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);border:1px solid var(--border);overflow:hidden;margin-bottom:24px}
+.tbl-head{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.tbl-head h3{font-size:15px;font-weight:600;color:var(--dark);white-space:nowrap}
+.search-box{display:flex;align-items:center;gap:8px;background:var(--bg);border:1.5px solid var(--border);border-radius:9px;padding:8px 14px;flex:1;max-width:320px}
+.search-box input{background:none;border:none;font-size:13px;color:var(--dark);width:100%}
+.search-box input::placeholder{color:var(--muted)}
+table{width:100%;border-collapse:collapse}
+th{padding:11px 18px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;background:var(--surface2);border-bottom:1px solid var(--border)}
+td{padding:12px 18px;font-size:13px;color:var(--dark);border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--bg2)}
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:100px;font-size:10px;font-weight:700;letter-spacing:.3px;white-space:nowrap}
+.badge-satis{background:var(--green-bg);color:var(--green)}
+.badge-kira{background:var(--blue-bg);color:var(--blue)}
+.badge-aracilik{background:var(--red-bg);color:var(--red)}
+.badge-taslak{background:#f0f0f0;color:#666}
+.badge-ok{background:var(--green-bg);color:var(--green)}
+.badge-admin{background:#f5e9c0;color:#7a5a00}
+.btn-sm{padding:5px 12px;border-radius:7px;font-size:12px;font-weight:600;background:var(--bg2);color:var(--dark);transition:.2s;border:1px solid var(--border);cursor:pointer}
+.btn-sm:hover{background:var(--border)}
+.btn-sm.danger{background:var(--red-bg);color:var(--red);border-color:transparent}
+.btn-sm.danger:hover{opacity:.8}
+.empty-state{text-align:center;padding:48px;color:var(--muted);font-size:14px}
+
+/* FORM PAGE */
+.fp-header{display:flex;align-items:center;gap:14px;margin-bottom:28px;flex-wrap:wrap}
+.back-btn{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:8px 14px;font-size:13px;color:var(--muted);font-weight:500;transition:.2s;cursor:pointer}
+.back-btn:hover{border-color:var(--gold);color:var(--gold)}
+.fp-title{font-family:'Playfair Display',serif;font-size:22px;color:var(--dark)}
+.type-pill{display:inline-block;font-family:'DM Sans',sans-serif;font-size:10px;font-weight:700;padding:3px 10px;border-radius:8px;margin-left:10px;vertical-align:middle;text-transform:uppercase;letter-spacing:1px}
+.form-layout{display:grid;grid-template-columns:1fr 355px;gap:22px;align-items:start}
+.form-sections{display:flex;flex-direction:column;gap:18px}
+.form-section{background:var(--surface);border-radius:var(--r);border:1px solid var(--border);box-shadow:var(--shadow);overflow:hidden}
+.fs-head{padding:15px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--surface2)}
+.fs-head h3{font-size:13.5px;font-weight:700;color:var(--dark)}
+.fs-icon{font-size:16px}
+.fs-body{padding:20px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-bottom:13px}
+.form-row.full{grid-template-columns:1fr}
+.form-row.three{grid-template-columns:1fr 1fr 1fr}
+.form-row.four{grid-template-columns:1fr 1fr 1fr 1fr}
+.form-row:last-child{margin-bottom:0}
+.field label{display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.9px;margin-bottom:6px}
+.field input,.field select,.field textarea{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13.5px;color:var(--dark);background:var(--bg);transition:.2s}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(184,134,11,.09)}
+.field textarea{resize:vertical;min-height:72px;line-height:1.6}
+.field input[readonly]{background:#f9f7f2;color:var(--muted)}
+
+/* PREVIEW PANEL */
+.preview-panel{position:sticky;top:24px;display:flex;flex-direction:column;gap:14px}
+.prev-card{background:var(--surface);border-radius:var(--r);border:1px solid var(--border);box-shadow:var(--shadow);overflow:hidden}
+.prev-card-head{padding:14px 18px;border-bottom:1px solid var(--border);background:var(--surface2)}
+.prev-card-head h3{font-size:13px;font-weight:700;color:var(--dark)}
+.prev-card-body{padding:16px}
+.pf{margin-bottom:11px;padding-bottom:11px;border-bottom:1px solid var(--border)}
+.pf:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none}
+.pf-lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px}
+.pf-val{font-size:13px;color:var(--dark);font-weight:500;min-height:17px}
+.pf-val.empty{color:var(--muted);font-style:italic;font-weight:400}
+.gen-btn{width:100%;padding:14px;background:linear-gradient(135deg,var(--dark),var(--dark2));color:#fff;border-radius:10px;font-size:14px;font-weight:700;transition:.2s;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}
+.gen-btn:hover{opacity:.88}.gen-btn:active{transform:scale(.98)}
+.save-draft-btn{width:100%;padding:11px;background:var(--bg2);color:var(--dark);border-radius:10px;font-size:13px;font-weight:600;transition:.2s;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer}
+.save-draft-btn:hover{background:var(--border)}
+
+/* FILTER TABS */
+.filter-row{display:flex;gap:8px;padding:14px 20px 0;flex-wrap:wrap}
+.filter-btn{padding:7px 15px;border-radius:8px;font-size:13px;font-weight:500;background:var(--surface);border:1px solid var(--border);color:var(--muted);transition:.2s;cursor:pointer}
+.filter-btn:hover,.filter-btn.active{background:var(--dark);color:#fff;border-color:var(--dark)}
+
+/* ADMIN PANEL */
+.admin-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-bottom:28px}
+.admin-stat{background:var(--surface);border-radius:var(--r);padding:20px;box-shadow:var(--shadow);border:1px solid var(--border)}
+.admin-stat .num{font-family:'Playfair Display',serif;font-size:28px;color:var(--dark)}
+.admin-stat .lbl{font-size:12px;color:var(--muted)}
+.staff-avatar{width:32px;height:32px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--dark);background:linear-gradient(135deg,var(--gold),var(--gold2));flex-shrink:0}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(26,24,18,.6);backdrop-filter:blur(4px);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal-box{background:var(--surface);border-radius:16px;width:100%;max-width:500px;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden}
+.modal-head{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-head h3{font-family:'Playfair Display',serif;font-size:18px;color:var(--dark)}
+.modal-body{padding:24px;max-height:70vh;overflow-y:auto}
+.modal-foot{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px}
+.btn-primary{padding:10px 20px;background:var(--dark);color:#fff;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;transition:.2s}
+.btn-primary:hover{opacity:.85}
+.btn-secondary{padding:10px 20px;background:var(--bg2);color:var(--dark);border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid var(--border);transition:.2s}
+.btn-secondary:hover{background:var(--border)}
+
+/* PDF MODAL */
+#pdfModal{position:fixed;inset:0;background:rgba(26,24,18,.65);backdrop-filter:blur(5px);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px}
+.pm-wrap{background:#fff;border-radius:16px;width:100%;max-width:860px;max-height:93vh;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.32);overflow:hidden}
+.pm-head{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.pm-head h3{font-family:'Playfair Display',serif;font-size:17px;color:var(--dark)}
+.pm-actions{display:flex;gap:9px}
+.btn-print{display:flex;align-items:center;gap:6px;padding:9px 18px;background:linear-gradient(135deg,var(--dark),var(--dark2));color:#fff;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;transition:.2s}
+.btn-print:hover{opacity:.85}
+.btn-close{padding:9px 14px;background:var(--bg2);color:var(--dark);border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid var(--border);transition:.2s}
+.btn-close:hover{background:var(--border)}
+.pm-body{overflow-y:auto;flex:1;padding:28px;background:#ede9e1}
+
+/* ============================================================
+   PDF DOCUMENT STYLES — Sözleşme baskı görünümü
+   ============================================================ */
+.pdf-doc{background:#fff;padding:52px 58px;box-shadow:0 2px 24px rgba(0,0,0,.09);border-radius:4px;max-width:740px;margin:0 auto;font-size:11.5px;line-height:1.8;color:#1a1812;font-family:'DM Sans',sans-serif}
+
+/* Antet */
+.pdf-letterhead{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:20px;border-bottom:2.5px solid #1a1812}
+.pdf-lb-brand{display:flex;align-items:center;gap:12px}
+.pdf-lb-icon{width:46px;height:46px;background:#1a1a2e;border-radius:10px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(201,168,76,.3);flex-shrink:0}
+.pdf-lb-name{font-family:'Playfair Display',serif;font-size:22px;color:#1a1812}
+.pdf-lb-sub{font-size:9px;color:#8a8474;margin-top:2px;font-family:'DM Mono',monospace;letter-spacing:.5px}
+.pdf-meta{text-align:right;font-size:10px;color:#8a8474;line-height:2}
+.doc-no{font-family:'DM Mono',monospace;font-size:12px;color:#1a1812;font-weight:600;background:#f5e9c0;padding:3px 10px;border-radius:5px;display:inline-block;margin-bottom:4px}
+
+/* Başlık */
+.pdf-title-block{text-align:center;margin-bottom:28px;padding:20px;background:#f9f7f2;border-radius:8px;border:1px solid #ddd9ce}
+.pdf-title-block h2{font-family:'Playfair Display',serif;font-size:15px;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px;color:#1a1812}
+.pdf-type-bar{display:inline-block;padding:4px 20px;background:#1a1812;color:#c9960d;font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;border-radius:100px}
+
+/* Referans kutusu */
+.pdf-ref-box{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;background:#faf8f4;border:1px solid #ddd9ce;border-radius:7px;padding:12px 16px;margin-bottom:24px;font-size:10.5px}
+.pdf-ref-k{color:#8a8474;font-weight:700;text-transform:uppercase;letter-spacing:.7px;font-size:9px;margin-bottom:2px}
+.pdf-ref-v{color:#1a1812;font-weight:600;font-family:'DM Mono',monospace}
+
+/* Madde başlıkları */
+.pdf-madde-baslik{font-size:11px;font-weight:700;color:#1a1812;margin:18px 0 8px;text-transform:uppercase;letter-spacing:.5px}
+
+/* Paragraf — düz metin */
+.pdf-p{margin-bottom:10px;text-align:justify;line-height:1.85;font-size:11.5px;color:#1a1812}
+
+/* Tablo — taraflar bilgileri */
+.pdf-taraf-tablo{width:100%;border-collapse:collapse;margin-bottom:12px;font-size:11px}
+.pdf-taraf-tablo td{padding:4px 8px;vertical-align:top;line-height:1.6}
+.pdf-taraf-tablo td:first-child{width:160px;color:#8a8474;font-weight:600;font-size:10.5px}
+.pdf-taraf-tablo td:last-child{color:#1a1812;font-weight:500}
+.pdf-taraf-baslik{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#5a5040;margin:10px 0 5px;padding:4px 8px;background:#f0ede4;border-radius:4px}
+
+/* Taşınmaz kutusu */
+.pdf-tasınmaz-box{background:#faf8f4;border:1px solid #ddd9ce;border-radius:7px;padding:14px 18px;margin:10px 0 16px}
+.pdf-row{display:grid;grid-template-columns:160px 1fr;gap:4px;margin-bottom:5px;font-size:11px}
+.pdf-row:last-child{margin-bottom:0}
+.pdf-key{color:#8a8474;font-weight:600;font-size:10.5px}
+.pdf-val{color:#1a1812}
+
+/* İmza tablosu */
+.pdf-imza-grid{display:grid;gap:20px;margin-top:36px}
+.pdf-imza-grid.iki{grid-template-columns:1fr 1fr}
+.pdf-imza-grid.dort{grid-template-columns:1fr 1fr 1fr 1fr}
+.pdf-imza-box{border:1px solid #c8c0b0;border-radius:6px;padding:14px 16px}
+.pdf-imza-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#8a8474;margin-bottom:10px}
+.pdf-imza-alan{height:50px;border-bottom:1.5px solid #1a1812;margin-bottom:10px}
+.pdf-imza-ad{font-size:11.5px;font-weight:600;color:#1a1812}
+.pdf-imza-tc{font-size:10px;color:#8a8474;font-family:'DM Mono',monospace;margin-top:2px}
+.pdf-imza-tarih{font-size:10px;color:#8a8474;margin-top:4px}
+
+.pdf-divider{border:none;border-top:1px solid #ddd9ce;margin:18px 0}
+.pdf-footer-bar{margin-top:28px;padding-top:12px;border-top:1px solid #ddd9ce;display:flex;justify-content:space-between;font-size:9px;color:#aaa;font-family:'DM Mono',monospace}
+
+/* Özel not kutusu */
+.pdf-not-box{background:#f5e9c0;border:1px solid #d4a017;border-radius:6px;padding:11px 14px;margin:14px 0;font-size:11px;line-height:1.8}
+
+/* REPORTS */
+.report-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-bottom:24px}
+.report-card{background:var(--surface);border-radius:var(--r);padding:22px;box-shadow:var(--shadow);border:1px solid var(--border)}
+.report-card h3{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px}
+.chart-bar-wrap{display:flex;flex-direction:column;gap:10px}
+.chart-bar-row{display:flex;align-items:center;gap:10px;font-size:12px}
+.chart-bar-lbl{width:80px;color:var(--muted);font-size:11px;text-align:right;flex-shrink:0}
+.chart-bar-bg{flex:1;height:10px;background:var(--bg2);border-radius:100px;overflow:hidden}
+.chart-bar-fill{height:100%;border-radius:100px;transition:width .6s ease}
+.chart-bar-val{width:40px;color:var(--dark);font-weight:600;font-size:12px}
+
+/* TOAST */
+.toast{position:fixed;bottom:28px;right:28px;background:var(--dark);color:#fff;padding:12px 20px;border-radius:10px;font-size:13.5px;font-weight:500;box-shadow:0 8px 30px rgba(0,0,0,.25);z-index:9999;transform:translateY(20px);opacity:0;transition:.3s}
+.toast.show{transform:translateY(0);opacity:1}
+
+/* ── MOBİL RESPONSIVE ── */
+@media(max-width:768px){
+  #loginPage{flex-direction:column}
+  .login-left{display:none}
+  .login-right{width:100%;padding:32px 24px;min-height:100vh}
+  .lr-inner{width:100%;max-width:100%}
+  .sidebar{width:100%;height:60px;position:fixed;bottom:0;top:auto;left:0;right:0;flex-direction:row;padding:0;z-index:300;border-top:1px solid rgba(255,255,255,.1)}
+  .sb-brand{display:none}
+  .sb-nav{display:flex;flex-direction:row;padding:0;overflow-x:auto;align-items:center;justify-content:space-around;width:100%;height:100%}
+  .sb-nav .nav-item{flex-direction:column;gap:2px;padding:8px 10px;font-size:9px;border-radius:0;margin:0;min-width:56px;align-items:center;justify-content:center;height:100%}
+  .nav-icon{font-size:19px;width:auto}
+  .sb-user{display:none}
+  .main{margin-left:0!important;padding:16px 14px;padding-bottom:76px}
+  .stats-grid{grid-template-columns:1fr 1fr;gap:12px}
+  .sc-num{font-size:26px}
+  .ctype-grid{grid-template-columns:1fr;gap:12px}
+  .form-layout{grid-template-columns:1fr;gap:16px}
+  .form-row{grid-template-columns:1fr!important;gap:10px}
+  .fs-body{padding:14px}
+  .preview-panel{order:2}
+  .tbl-wrap{overflow-x:auto}
+  table{min-width:580px}
+  .tbl-head{flex-direction:column;align-items:flex-start;gap:10px}
+  .search-box{max-width:100%;width:100%}
+  .ph h1{font-size:20px}
+  .admin-grid{grid-template-columns:1fr 1fr}
+  .report-grid{grid-template-columns:1fr}
+  .pm-wrap{max-height:100vh;border-radius:0;width:100%}
+  .pm-head{flex-direction:column;gap:8px;align-items:flex-start}
+  .pm-actions{width:100%;display:flex;gap:8px}
+  .btn-print,.btn-close{flex:1;text-align:center;justify-content:center}
+}
+/* ============================================================
+   PRINT — Tüm sayfaları doğru yazdır
+   ============================================================ */
+@media print{
+  body>*{display:none!important}
+  #pdfModal{display:block!important;position:static!important;background:none!important;padding:0!important;overflow:visible!important}
+  .pm-head,.pm-actions{display:none!important}
+  .pm-wrap{box-shadow:none!important;max-height:none!important;border-radius:0!important;overflow:visible!important;width:100%!important;margin:0!important}
+  .pm-body{padding:0!important;background:#fff!important;overflow:visible!important;max-height:none!important}
+  .pdf-doc{box-shadow:none!important;padding:24px!important;max-width:100%!important;margin:0!important}
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
+}
+</style>
+</head>
+<body>
+<!-- LOADING SCREEN -->
+<div id="loadingScreen">
+  <div class="ls-spinner"></div>
+  <div class="ls-text">Yükleniyor...</div>
+</div>
+
+<!-- LOGIN PAGE -->
+<div id="loginPage">
+  <div class="login-left">
+    <div class="ll-brand">
+      <div class="ll-icon">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none"><rect x="2" y="14" width="28" height="16" rx="1" fill="#c9a84c"/><rect x="6" y="10" width="20" height="6" rx="1" fill="#e0c060"/><rect x="10" y="6" width="12" height="6" rx="1" fill="#c9a84c"/><rect x="5" y="17" width="5" height="4" rx=".5" fill="#1a1a2e" opacity=".5"/><rect x="13.5" y="17" width="5" height="4" rx=".5" fill="#1a1a2e" opacity=".5"/><rect x="22" y="17" width="5" height="4" rx=".5" fill="#1a1a2e" opacity=".5"/></svg>
+      </div>
+      <div class="ll-name">
+        <span class="ll-name-main">ÇELEBİOĞLU</span>
+        <span class="ll-name-sub">GAYRİMENKUL</span>
+      </div>
+    </div>
+    <div class="ll-hero">
+      <h2>Kocaeli'nin<br><em>Güvenilir</em><br>Gayrimenkul Uzmanı</h2>
+      <p>Satış, kira ve tahliye sözleşmelerinizi dakikalar içinde oluşturun, yönetin ve arşivleyin.</p>
+    </div>
+    <div class="ll-stats">
+      <div><div class="ls-num">13+</div><div class="ls-lbl">Yıllık Tecrübe</div></div>
+      <div><div class="ls-num">2.512</div><div class="ls-lbl">Memnun Müşteri</div></div>
+      <div><div class="ls-num">2</div><div class="ls-lbl">Ofis — Gebze & Başiskele</div></div>
+    </div>
+  </div>
+  <div class="login-right">
+    <div class="lf-wrap">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:28px">
+        <div style="width:36px;height:36px;background:#1a1a2e;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg width="20" height="20" viewBox="0 0 32 32" fill="none"><rect x="2" y="14" width="28" height="16" rx="1" fill="#c9a84c"/><rect x="6" y="10" width="20" height="6" rx="1" fill="#e0c060"/><rect x="10" y="6" width="12" height="6" rx="1" fill="#c9a84c"/></svg>
+        </div>
+        <div>
+          <div style="font-size:13px;font-weight:800;letter-spacing:1.5px;background:linear-gradient(90deg,#4a9fd4,#2dd4bf);-webkit-background-clip:text;-webkit-text-fill-color:transparent">ÇELEBİOĞLU</div>
+          <div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#c87941;text-transform:uppercase">GAYRİMENKUL</div>
+        </div>
+      </div>
+      <h3>Giriş Yapın</h3>
+      <p>Hesabınıza erişmek için bilgilerinizi girin</p>
+      <div class="fg"><label>E-posta</label><input type="text" id="loginEmail" placeholder="ornek@celebigayrimenkul.com" autocomplete="off"></div>
+      <div class="fg"><label>Şifre</label><input type="password" id="loginPass" placeholder="••••••••" autocomplete="off"></div>
+      <button class="login-btn" onclick="doLogin()">Giriş Yap</button>
+      <div class="login-err" id="loginErr">E-posta veya şifre hatalı.</div>
+
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="appPage" class="hidden">
+  <div class="sidebar">
+    <div class="sb-brand">
+      <div class="sb-icon">
+        <svg width="20" height="20" viewBox="0 0 32 32" fill="none"><rect x="2" y="14" width="28" height="16" rx="1" fill="#c9a84c"/><rect x="6" y="10" width="20" height="6" rx="1" fill="#e0c060"/><rect x="10" y="6" width="12" height="6" rx="1" fill="#c9a84c"/><rect x="5" y="17" width="5" height="4" rx=".5" fill="#1a1a2e" opacity=".5"/><rect x="13.5" y="17" width="5" height="4" rx=".5" fill="#1a1a2e" opacity=".5"/><rect x="22" y="17" width="5" height="4" rx=".5" fill="#1a1a2e" opacity=".5"/></svg>
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:800;letter-spacing:1.5px;background:linear-gradient(90deg,#4a9fd4,#2dd4bf);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">ÇELEBİOĞLU</div>
+        <div style="font-size:8px;font-weight:700;letter-spacing:2px;color:#c87941">GAYRİMENKUL</div>
+      </div>
+    </div>
+    <nav class="sb-nav">
+      <div class="sb-section">Ana Menü</div>
+      <div class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard"><span class="nav-icon">📊</span> Dashboard</div>
+      <div class="nav-item" onclick="showPage('yeni')" id="nav-yeni"><span class="nav-icon">✍️</span> Yeni Sözleşme</div>
+      <div class="nav-item" onclick="showPage('sozlesmeler')" id="nav-sozlesmeler"><span class="nav-icon">📋</span> Sözleşmeler</div>
+      <div class="nav-item" onclick="showPage('raporlar')" id="nav-raporlar"><span class="nav-icon">📈</span> Raporlar</div>
+      <div class="sb-section">Sistem</div>
+      <div class="nav-item" onclick="showPage('admin')" id="nav-admin" style="display:none"><span class="nav-icon">⚙️</span> Yönetim Paneli</div>
+    </nav>
+    <div class="sb-user">
+      <div class="ua" id="sbInitials">AY</div>
+      <div>
+        <div class="ui-name" id="sbName">Admin Yönetici</div>
+        <div class="ui-role" id="sbRole">Yönetici</div>
+      </div>
+      <button class="logout-btn" onclick="doLogout()" title="Çıkış">⏻</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- DASHBOARD -->
+    <div id="pageDashboard">
+      <div class="ph"><h1>Dashboard</h1><p id="dashDate"></p></div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="sc-icon">📋</div><div class="sc-num" id="statTotal">0</div><div class="sc-lbl">Toplam Sözleşme</div></div>
+        <div class="stat-card"><div class="sc-icon">🏡</div><div class="sc-num" id="statSatis">0</div><div class="sc-lbl">Satış Sözleşmesi</div></div>
+        <div class="stat-card"><div class="sc-icon">🔑</div><div class="sc-num" id="statKira">0</div><div class="sc-lbl">Kira Sözleşmesi</div></div>
+        <div class="stat-card"><div class="sc-icon">🚪</div><div class="sc-num" id="statAracilik">0</div><div class="sc-lbl">Tahliye Taahhüdü</div></div>
+      </div>
+      <div class="ph" style="margin-bottom:18px"><h1 style="font-size:18px">Yeni Sözleşme Oluştur</h1></div>
+      <div class="ctype-grid">
+        <button class="ctype-btn satis" onclick="startForm('satis')"><div class="ctype-icon">🏡</div><div class="ctype-name">Satış Sözleşmesi</div><div class="ctype-desc">Gayrimenkule cayma akçeli aracılık sözleşmesi.</div><div class="ctype-arr">→</div></button>
+        <button class="ctype-btn kira" onclick="startForm('kira')"><div class="ctype-icon">🔑</div><div class="ctype-name">Kira Sözleşmesi</div><div class="ctype-desc">Konut kira sözleşmesi.</div><div class="ctype-arr">→</div></button>
+        <button class="ctype-btn aracilik" onclick="startForm('tahliye')"><div class="ctype-icon">🚪</div><div class="ctype-name">Tahliye Taahhüdü</div><div class="ctype-desc">Kiracı tahliye taahhüt belgesi.</div><div class="ctype-arr">→</div></button>
+      </div>
+      <div class="tbl-wrap">
+        <div class="tbl-head"><h3>Son Sözleşmeler</h3><button class="btn-sm" onclick="showPage('sozlesmeler')">Tümünü Gör →</button></div>
+        <div id="dashRecentTable"></div>
+      </div>
+    </div>
+
+    <!-- YENİ SÖZLEŞME -->
+    <div id="pageYeni" class="hidden">
+      <div class="fp-header">
+        <button class="back-btn" onclick="showPage('dashboard')">← Geri</button>
+        <div class="fp-title" id="formTitle">Yeni Sözleşme</div>
+      </div>
+      <div id="typeSelector">
+        <div class="ctype-grid">
+          <button class="ctype-btn satis" onclick="startForm('satis')"><div class="ctype-icon">🏡</div><div class="ctype-name">Satış Sözleşmesi</div><div class="ctype-desc">Gayrimenkule cayma akçeli aracılık sözleşmesi.</div><div class="ctype-arr">→</div></button>
+          <button class="ctype-btn kira" onclick="startForm('kira')"><div class="ctype-icon">🔑</div><div class="ctype-name">Kira Sözleşmesi</div><div class="ctype-desc">Konut kira sözleşmesi.</div><div class="ctype-arr">→</div></button>
+          <button class="ctype-btn aracilik" onclick="startForm('tahliye')"><div class="ctype-icon">🚪</div><div class="ctype-name">Tahliye Taahhüdü</div><div class="ctype-desc">Kiracı tahliye taahhüt belgesi.</div><div class="ctype-arr">→</div></button>
+        </div>
+      </div>
+      <div id="formContent" class="hidden">
+        <div class="form-layout">
+          <div class="form-sections" id="formSections"></div>
+          <div class="preview-panel">
+            <div class="prev-card">
+              <div class="prev-card-head"><h3>📄 Özet Önizleme</h3></div>
+              <div class="prev-card-body" id="previewBody"></div>
+            </div>
+            <button class="gen-btn" onclick="generateContract()">📄 Sözleşme Oluştur</button>
+            <button class="save-draft-btn" onclick="saveDraft()">💾 Taslak Kaydet</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SÖZLEŞMELER -->
+    <div id="pageSozlesmeler" class="hidden">
+      <div class="ph"><h1>Sözleşmeler</h1><p>Tüm sözleşmelerinizi yönetin</p></div>
+      <div class="tbl-wrap">
+        <div class="filter-row">
+          <button class="filter-btn active" onclick="filterContracts('hepsi',this)">Hepsi</button>
+          <button class="filter-btn" onclick="filterContracts('satis',this)">🏡 Satış</button>
+          <button class="filter-btn" onclick="filterContracts('kira',this)">🔑 Kira</button>
+          <button class="filter-btn" onclick="filterContracts('tahliye',this)">🚪 Tahliye</button>
+        </div>
+        <div class="tbl-head" style="border-top:1px solid var(--border)">
+          <h3 id="contractCount">Tüm Sözleşmeler</h3>
+          <div class="search-box"><span>🔍</span><input type="text" placeholder="Sözleşme ara..." oninput="searchContracts(this.value)"></div>
+        </div>
+        <div id="contractsTable"></div>
+      </div>
+    </div>
+
+    <!-- RAPORLAR -->
+    <div id="pageRaporlar" class="hidden">
+      <div class="ph"><h1>Raporlar</h1><p>İstatistik ve analizler</p></div>
+      <div class="report-grid">
+        <div class="report-card"><h3>Sözleşme Türleri</h3><div class="chart-bar-wrap" id="chartTypes"></div></div>
+        <div class="report-card"><h3>Son 6 Ay</h3><div class="chart-bar-wrap" id="chartMonths"></div></div>
+      </div>
+      <div class="tbl-wrap">
+        <div class="tbl-head"><h3>Özet İstatistikler</h3></div>
+        <table><thead><tr><th>Metrik</th><th>Değer</th><th>Açıklama</th></tr></thead><tbody id="reportTable"></tbody></table>
+      </div>
+    </div>
+
+    <!-- ADMİN -->
+    <div id="pageAdmin" class="hidden">
+      <div class="ph"><h1>Yönetim Paneli</h1><p>Kullanıcı ve sistem yönetimi</p></div>
+      <div class="admin-grid">
+        <div class="admin-stat"><div class="num" id="adminUserCount">0</div><div class="lbl">Toplam Kullanıcı</div></div>
+        <div class="admin-stat"><div class="num" id="adminAdminCount">0</div><div class="lbl">Yönetici</div></div>
+        <div class="admin-stat"><div class="num" id="adminContractCount">0</div><div class="lbl">Toplam Sözleşme</div></div>
+      </div>
+      <div class="tbl-wrap" style="margin-bottom:22px">
+        <div class="tbl-head"><h3>Kullanıcılar</h3><button class="btn-sm" onclick="openAddUserModal()">+ Kullanıcı Ekle</button></div>
+        <table><thead><tr><th>Kullanıcı</th><th>E-posta</th><th>Rol</th><th>Durum</th><th>İşlem</th></tr></thead><tbody id="adminUsersTable"></tbody></table>
+      </div>
+      <div class="tbl-wrap">
+        <div class="tbl-head"><h3>📊 Danışman Performansı</h3></div>
+        <table><thead><tr><th>Danışman</th><th style="text-align:center">Toplam</th><th style="text-align:center">Satış</th><th style="text-align:center">Kira</th><th style="text-align:center">Tahliye</th></tr></thead><tbody id="adminPerfTable"></tbody></table>
+      </div>
+      <div class="tbl-wrap">
+        <div class="tbl-head">
+          <h3>💾 Sözleşme Yedeği</h3>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn-sm" onclick="exportExcel()" style="background:#1a4a2e;color:#fff;border-color:#1a4a2e">📊 Excel (.xlsx)</button>
+            <button class="btn-sm" onclick="exportWord()" style="background:#1a2d5a;color:#fff;border-color:#1a2d5a">📝 Word (.docx)</button>
+            <button class="btn-sm" onclick="exportPDF()" style="background:#4a1a1a;color:#fff;border-color:#4a1a1a">📄 PDF (.pdf)</button>
+          </div>
+        </div>
+        <div style="padding:16px 22px;font-size:13px;color:var(--muted)">
+          Tüm sözleşmeleri seçtiğiniz formatta bilgisayarınıza indirin. Düzenli yedek almanız önerilir.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PDF MODAL -->
+<div id="pdfModal" class="hidden">
+  <div class="pm-wrap">
+    <div class="pm-head">
+      <h3>📄 Sözleşme Önizleme</h3>
+      <div class="pm-actions">
+        <button class="btn-print" onclick="printPDF()">🖨️ Yazdır / PDF</button>
+        <button class="btn-close" onclick="closePdfModal()">✕ Kapat</button>
+      </div>
+    </div>
+    <div class="pm-body"><div class="pdf-doc" id="pdfContent"></div></div>
+  </div>
+</div>
+
+<!-- ADD USER MODAL -->
+<div id="addUserModal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div class="modal-head"><h3>Kullanıcı Ekle</h3><button class="btn-sm" onclick="closeAddUserModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="fg"><label>Ad Soyad</label><input type="text" id="newUserName" placeholder="Ad Soyad"></div>
+      <div class="fg"><label>E-posta</label><input type="email" id="newUserEmail" placeholder="email@sirket.com"></div>
+      <div class="fg"><label>Şifre</label><input type="password" id="newUserPass" placeholder="Şifre"></div>
+      <div class="fg"><label>Rol</label><select id="newUserRole"><option value="user">Kullanıcı</option><option value="admin">Yönetici</option></select></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-secondary" onclick="closeAddUserModal()">İptal</button>
+      <button class="btn-primary" onclick="addUser()">Ekle</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script type="module">
+// ── FİREBASE ──────────────────────────────────────────────────────────────────
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword, browserLocalPersistence, setPersistence } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { initializeApp as initializeSecondaryApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBdMnwQB9UD4-0xzx_RtxrQjePu7n3XeeM",
+  authDomain: "celebigayrimenkul-8a0e8.firebaseapp.com",
+  projectId: "celebigayrimenkul-8a0e8",
+  storageBucket: "celebigayrimenkul-8a0e8.firebasestorage.app",
+  messagingSenderId: "74968540757",
+  appId: "1:74968540757:web:30a473f8a3be3303f7d6dc"
+};
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+const auth = getAuth(fbApp);
+
+// Oturumu LOCAL olarak sakla — tarayıcı kapansa bile devam eder, refresh'te bozulmaz
+await setPersistence(auth, browserLocalPersistence);
+
+// İkincil uygulama — kullanıcı oluştururken mevcut oturumu etkilememek için
+const secondaryApp = initializeSecondaryApp(firebaseConfig, 'secondary');
+const secondaryAuth = getAuth(secondaryApp);
+
+// ── GÜVENLİ XSS KORUMASI ─────────────────────────────────────────────────────
+function esc(str){
+  if(!str) return '';
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
+// ── FİRESTORE FONKSİYONLARI ──────────────────────────────────────────────────
+async function fbSaveContract(c){
+  try{ await addDoc(collection(db,'contracts'), c); }
+  catch(e){ console.error('Kayıt hatası:',e); showToast('⚠️ Kayıt hatası: '+e.message); }
+}
+async function fbLoadContracts(){
+  try{
+    const q = query(collection(db,'contracts'), orderBy('date','desc'));
+    const snap = await getDocs(q);
+    contracts = snap.docs.map(d=>({...d.data(), _docId:d.id}));
+  } catch(e){ console.error('Yükleme hatası:',e); }
+}
+async function fbDeleteContract(c){
+  try{
+    if(c._docId) await deleteDoc(doc(db,'contracts',c._docId));
+  } catch(e){ console.error('Silme hatası:',e); }
+}
+
+// Kullanıcı profili Firestore'da 'users' koleksiyonunda tutulur
+// Şifreler artık Firebase Auth'ta — Firestore'da şifre yok
+async function fbSaveUserProfile(uid, profileData){
+  try{
+    // Şifreyi asla Firestore'a kaydetme
+    const {pass, ...safeData} = profileData;
+    await setDoc(doc(db,'users',uid), safeData);
+  } catch(e){ console.error('Profil kayıt hatası:',e); showToast('⚠️ Profil kaydedilemedi: '+e.message); }
+}
+async function fbLoadUserProfile(uid){
+  try{
+    const snap = await getDoc(doc(db,'users',uid));
+    if(snap.exists()) return snap.data();
+    return null;
+  } catch(e){ 
+    console.error('Profil yükleme hatası:', e.code, e.message); 
+    return null; 
+  }
+}
+async function fbLoadAllUserProfiles(){
+  try{
+    const snap = await getDocs(collection(db,'users'));
+    return snap.docs.map(d=>({...d.data(), uid:d.id}));
+  } catch(e){ console.error('Kullanıcı listesi hatası:',e); return []; }
+}
+async function fbDeleteUserProfile(uid){
+  try{
+    await deleteDoc(doc(db,'users',uid));
+  } catch(e){ console.error('Kullanıcı silme hatası:',e); }
+}
+
+// ── VERİ ──────────────────────────────────────────────────────────────────────
+let users = [];
+let contracts = [];
+let currentUser = null, currentFilter = 'hepsi', currentSearchQ = '';
+// ── BAŞLANGIÇ: Tüm sayfaları gizle, loading göster ───────────────────────────
+document.getElementById('loginPage').classList.add('hidden');
+document.getElementById('appPage').classList.add('hidden');
+
+// ── AUTH STATE OBSERVER ───────────────────────────────────────────────────────
+// Firebase oturum durumunu kontrol eder.
+// İLK çağrıda (sayfa yüklenince) oturumu geri yükler.
+// Sonraki çağrılarda (kullanıcı ekleme gibi) müdahale etmez.
+let _authInitialized = false;
+
+onAuthStateChanged(auth, async (firebaseUser) => {
+  // İlk init: sayfa yeni yüklendi
+  if(!_authInitialized){
+    _authInitialized = true;
+    if(firebaseUser){
+      const profile = await fbLoadUserProfile(firebaseUser.uid);
+      if(profile && profile.active !== false){
+        currentUser = { ...profile, uid: firebaseUser.uid, id: firebaseUser.uid };
+        showApp();
+      } else {
+        await signOut(auth);
+        showLogin();
+      }
+    } else {
+      showLogin();
+    }
+    return;
+  }
+  // Sonraki tetiklemeler: sadece logout durumunda login göster
+  // (kullanıcı ekleme sırasında secondaryAuth signOut tetikler — bunu yok say)
+  if(!firebaseUser && currentUser === null){
+    showLogin();
+  }
+});
+
+function showLogin(){
+  document.getElementById('loadingScreen').classList.add('hidden');
+  document.getElementById('appPage').classList.add('hidden');
+  document.getElementById('loginPage').classList.remove('hidden');
+}
+
+function showApp(){
+  document.getElementById('loadingScreen').classList.add('hidden');
+  document.getElementById('loginPage').classList.add('hidden');
+  document.getElementById('appPage').classList.remove('hidden');
+  document.getElementById('sbName').textContent = currentUser.name||'';
+  document.getElementById('sbRole').textContent = currentUser.role==='admin'?'Yönetici':'Danışman';
+  document.getElementById('sbInitials').textContent = (currentUser.name||'?').split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase();
+  document.getElementById('nav-admin').style.display = currentUser.role==='admin'?'flex':'none';
+  document.getElementById('dashDate').textContent = new Date().toLocaleDateString('tr-TR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  fbLoadContracts().then(()=>showPage('dashboard'));
+}
+
+// ── LOGIN ─────────────────────────────────────────────────────────────────────
+async function doLogin(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass  = document.getElementById('loginPass').value;
+  const errEl = document.getElementById('loginErr');
+  const btn   = document.querySelector('.login-btn');
+
+  if(!email||!pass){
+    errEl.style.display='block';
+    errEl.textContent='E-posta ve şifre boş bırakılamaz.';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Giriş yapılıyor...';
+  errEl.style.display = 'none';
+
+  try {
+    const cred = await signInWithEmailAndPassword(auth, email, pass);
+    const profile = await fbLoadUserProfile(cred.user.uid);
+
+    if(!profile){
+      await signOut(auth);
+      errEl.style.display='block';
+      errEl.textContent='Kullanıcı profili bulunamadı. Yöneticinize başvurun.';
+      return;
+    }
+    if(profile.active === false){
+      await signOut(auth);
+      errEl.style.display='block';
+      errEl.textContent='Hesabınız devre dışı bırakılmış. Yöneticinize başvurun.';
+      return;
+    }
+
+    currentUser = { ...profile, uid: cred.user.uid, id: cred.user.uid };
+    _authInitialized = true; // onAuthStateChanged tekrar müdahale etmesin
+    showApp();
+
+  } catch(e){
+    errEl.style.display='block';
+    if(e.code==='auth/user-not-found'||e.code==='auth/wrong-password'||e.code==='auth/invalid-credential'){
+      errEl.textContent='E-posta veya şifre hatalı.';
+    } else if(e.code==='auth/too-many-requests'){
+      errEl.textContent='Çok fazla hatalı giriş. Lütfen birkaç dakika bekleyin.';
+    } else {
+      errEl.textContent='Giriş yapılamadı: '+e.message;
+    }
+    document.getElementById('loginPass').value='';
+  } finally {
+    btn.disabled=false;
+    btn.textContent='Giriş Yap';
+  }
+}
+
+async function doLogout(){
+  currentUser = null;
+  contracts = [];
+  users = [];
+  _authInitialized = false; // Sonraki onAuthStateChanged login sayfasını göstersin
+  try{ await signOut(auth); } catch(e){ console.error('Logout hatası:',e); }
+}
+document.getElementById('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+document.getElementById('loginEmail').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+window.doLogin=doLogin;
+window.doLogout=doLogout;
+
+// ── SAYFA YÖNLENDIRME ─────────────────────────────────────────────────────────
+const pages=['dashboard','yeni','sozlesmeler','raporlar','admin'];
+function cap(s){return s.charAt(0).toUpperCase()+s.slice(1)}
+async function showPage(name){
+  pages.forEach(p=>{
+    const el=document.getElementById('page'+cap(p));
+    if(el)el.classList.toggle('hidden',p!==name);
+    const nav=document.getElementById('nav-'+p);
+    if(nav)nav.classList.toggle('active',p===name);
+  });
+  if(name==='dashboard'){await fbLoadContracts();renderDashboard();}
+  if(name==='sozlesmeler'){await fbLoadContracts();renderContracts();}
+  if(name==='raporlar'){await fbLoadContracts();renderReports();}
+  if(name==='admin') await renderAdmin();
+  if(name==='yeni'){document.getElementById('typeSelector').classList.remove('hidden');document.getElementById('formContent').classList.add('hidden');document.getElementById('formTitle').textContent='Yeni Sözleşme';}
+}
+window.showPage=showPage;
+
+function getVisibleContracts(){
+  if(currentUser.role==='admin')return contracts;
+  return contracts.filter(c=>c.createdBy===currentUser.uid||c.assignedTo===currentUser.uid);
+}
+
+function renderDashboard(){
+  const visible=getVisibleContracts();
+  document.getElementById('statTotal').textContent=visible.length;
+  document.getElementById('statSatis').textContent=visible.filter(c=>c.type==='satis').length;
+  document.getElementById('statKira').textContent=visible.filter(c=>c.type==='kira').length;
+  document.getElementById('statAracilik').textContent=visible.filter(c=>c.type==='tahliye').length;
+  document.getElementById('dashRecentTable').innerHTML=renderContractTable([...visible].slice(0,5),false);
+}
+
+// ── FORM ──────────────────────────────────────────────────────────────────────
+function startForm(type){
+  showPage('yeni');
+  document.getElementById('typeSelector').classList.add('hidden');
+  document.getElementById('formContent').classList.remove('hidden');
+  const names={satis:'Satış Sözleşmesi',kira:'Kira Sözleşmesi',tahliye:'Tahliye Taahhüdü'};
+  const colors={satis:'#1a4a2e',kira:'#1a2a4a',tahliye:'#4a1a1a'};
+  const icons={satis:'🏡',kira:'🔑',tahliye:'🚪'};
+  document.getElementById('formTitle').innerHTML=names[type]+`<span class="type-pill" style="background:${colors[type]}20;color:${colors[type]}">${icons[type]} ${names[type]}</span>`;
+  document.getElementById('formSections').innerHTML=buildForm(type);
+  renderPreview(type);
+}
+window.startForm=startForm;
+
+function gv(id){const el=document.getElementById(id);return el?el.value:'';}
+function fmt(n){if(!n)return '—';const num=parseFloat(n);if(isNaN(num))return n;return num.toLocaleString('tr-TR');}
+function d(val){return val||'……………'}
+
+function buildForm(type){
+  const today=new Date().toISOString().slice(0,10);
+  const rp=()=>`oninput="renderPreview('${type}')"`;
+
+  if(type==='tahliye'){return `
+    <div class="form-section"><div class="fs-head"><span class="fs-icon">🚪</span><h3>Kiracı Bilgileri</h3></div><div class="fs-body">
+      <div class="form-row"><div class="field"><label>Kiracı Adı Soyadı</label><input type="text" id="f_kiraci" oninput="renderPreview('tahliye')" placeholder="Ad Soyad"></div>
+      <div class="field"><label>TC Kimlik No</label><input type="text" id="f_kiraci_tc" oninput="renderPreview('tahliye')" placeholder="00000000000" maxlength="11"></div></div>
+    </div></div>
+    <div class="form-section"><div class="fs-head"><span class="fs-icon">🏠</span><h3>Kiraya Veren</h3></div><div class="fs-body">
+      <div class="form-row"><div class="field"><label>Adı Soyadı</label><input type="text" id="f_kiralayan" oninput="renderPreview('tahliye')" placeholder="Ad Soyad"></div>
+      <div class="field"><label>TC Kimlik No</label><input type="text" id="f_kiralayan_tc" oninput="renderPreview('tahliye')" placeholder="00000000000" maxlength="11"></div></div>
+    </div></div>
+    <div class="form-section"><div class="fs-head"><span class="fs-icon">📍</span><h3>Taşınmaz</h3></div><div class="fs-body">
+      <div class="form-row three"><div class="field"><label>İl</label><input type="text" id="f_il" oninput="renderPreview('tahliye')" placeholder="Kocaeli"></div>
+      <div class="field"><label>İlçe</label><input type="text" id="f_ilce" oninput="renderPreview('tahliye')" placeholder="Gebze"></div>
+      <div class="field"><label>Mahalle</label><input type="text" id="f_mahalle" oninput="renderPreview('tahliye')" placeholder="Mahalle"></div></div>
+      <div class="form-row three"><div class="field"><label>Ada No</label><input type="text" id="f_ada" oninput="renderPreview('tahliye')" placeholder="123"></div>
+      <div class="field"><label>Parsel No</label><input type="text" id="f_parsel" oninput="renderPreview('tahliye')" placeholder="456"></div>
+      <div class="field"><label>Bağımsız Bölüm No</label><input type="text" id="f_bb_no" oninput="renderPreview('tahliye')" placeholder="12"></div></div>
+      <div class="form-row full"><div class="field"><label>Açık Adres</label><input type="text" id="f_adres" oninput="renderPreview('tahliye')" placeholder="Tam adres..."></div></div>
+    </div></div>
+    <div class="form-section"><div class="fs-head"><span class="fs-icon">📅</span><h3>Tarihler</h3></div><div class="fs-body">
+      <div class="form-row three">
+        <div class="field"><label>Kira Sözleşmesi Tarihi</label><input type="date" id="f_kira_sozlesme_tarihi" oninput="renderPreview('tahliye')"></div>
+        <div class="field"><label>Taahhüt Tarihi</label><input type="date" id="f_tarih" oninput="renderPreview('tahliye')" value="${today}"></div>
+        <div class="field"><label>Tahliye Tarihi</label><input type="date" id="f_tahliye_tarihi" oninput="renderPreview('tahliye')"></div>
+      </div>
+    </div></div>`;}
+
+  if(type==='satis'){return `
+    <div class="form-section"><div class="fs-head"><span class="fs-icon">🏢</span><h3>Emlak Ofisi / Danışman</h3></div><div class="fs-body">
+      <div class="form-row"><div class="field"><label>Danışman Adı Soyadı</label><input type="text" id="f_araci_ad" oninput="renderPreview('satis')" value="${currentUser?.name||''}" placeholder="Ad Soyad"></div>
+      <div class="field"><label>Danışman TC</label><input type="text" id="f_araci_tc" oninput="renderPreview('satis')" placeholder="00000000000" maxlength="11"></div></div>
+      <div class="form-row"><div class="field"><label>Danışman Telefon</label><input type="text" id="f_araci_tel" oninput="renderPreview('satis')" placeholder="0532 133 22 23"></div>
+      <div class="field"><label>Yetki Belgesi No</label><input type="text" id="f_araci_lisans" oninput="renderPreview('satis')" value="4105800"></div></div>
+      <div class="form-row full"><div class="field"><label>Ofis Adresi</label><input type="text" id="f_araci_adres" oninput="renderPreview('satis')" value="Gaziler Mah. Gaziler Cad. 1721 Sk. No: 1/B Gebze/KOCAELİ"></div></div>
+    </div></div>
+    <div class="form-section"><div class="fs-head"><span class="fs-icon">👤</span><h3>Satıcı</h3></div><div class="fs-body">
+      <div class="form-row"><div class="field"><label>Adı Soyadı</label><input type="text" id="f_satici" oninput="renderPreview('satis')" placeholder="Ad Soyad"></div>
+      <div class="field"><label>TC Kimlik No</label><input type="text" id="f_satici_tc" oninput="renderPreview('satis')" placeholder="00000000000" maxlength="11"></div></div>
+      <div class="form-row"><div class="field"><label>Telefon</label><input type="text" id="f_satici_tel" oninput="renderPreview('satis')" placeholder="0xxx xxx xx xx"></div>
+      <div class="field"><label>E-posta</label><input type="text" id="f_satici_email" oninput="renderPreview('satis')" placeholder="email@..."></div></div>
+      <div class="form-row full"><div class="field"><label>Adres</label><input type="text" id="f_satici_adres" oninput="renderPreview('satis')" placeholder="Tebligat adresi..."></div></div>
+    </div></div>
+    <div class="form-section"><div class="fs-head"><span class="fs-icon">👤</span><h3>Alıcı</h3></div><div class="fs-body">
+      <div class="form-row"><div class="field"><label>Adı Soyadı</label><input type="text" id="f_alici" oninput="renderPreview('satis')" placeholder="Ad Soyad"></div>
+      <div class="field"><label>TC Kimlik No</label><input type="text" id="f_alici_tc" oninput="renderPreview('satis')" placeholder="00000000000" maxlength="11"></div></div>
+      <div class="form-row"><div class="field"><label>Telefon</label><input type="text" id="f_alici_tel" oninput="renderPreview('satis')" placeholder="0xxx xxx xx xx"></div>
+      <div class="field"><label>E-posta</label><input type="text" id="f_alici_email" oninput="renderPreview('satis')" placeholder="email@..."></div></div>
+      <div class="form-row full"><div class="field"><label>Adres</label><input type="text" id="f_alici_adres" oninput="renderPreview('satis')" placeholder="Tebligat adresi..."></div></div>
+    </div></div>
+    <div class="form-section"><div class="fs-head"><span class="fs-icon">🏠</span><h3>Taşınmaz</h3></div><div class="fs-body">
+      <div class="form-row"><div class="field"><label>Cinsi</label><select id="f_tip" onchange="renderPreview('satis')"><option value="">Seçin...</option><option>Daire</option><option>Villa</option><option>Arsa</option><option>İşyeri</option><option>Dükkan</option><option>Depo</option></select></div>
+      <div class="field"><label>Kullanım</label><select id="f_kullanim" onchange="renderPreview('satis')"><option value="">Seçin...</option><option>Konut</option><option>Ticari</option></select></div></div>
+      <div class="form-row three"><div class="field"><label>İl</label><input type="text" id="f_il" oninput="renderPreview('satis')" placeholder="Kocaeli"></div>
+      <div class="field"><label>İlçe</label><input type="text" id="f_ilce" oninput="renderPreview('satis')" placeholder="Gebze"></div>
+      <div class="field"><label>Mahalle</label><input type="text" id="f_mahalle" oninput="renderPreview('satis')" placeholder="Mahalle"></div></div>
+      <div class="form-row three"><div class="field"><label>Cadde</label><input type="text" id="f_cadde" oninput="renderPreview('satis')" placeholder="Cadde"></div>
+      <div class="field"><label>Sokak</label><input type="text" id="f_sokak" oninput="renderPreview('satis')" placeholder="Sokak"></div>
+      <div class="field"><label>Kapı No</label><input type="text" id="f_kapi_no" oninput="renderPreview('satis')" placeholder="No"></div></div>
+      <div class="form-row three"><div class="field"><label>Ada No</label><input type="text" id="f_ada" oninput="renderPreview('satis')" placeholder="123"></div>
+      <div class="field"><label>Parsel No</label><input type="text" id="f_parsel" oninput="renderPreview('satis')" placeholder="456"></div>
+      <div class="field"><label>Bağımsız Bölüm No</label><input type="text" id="f_bb_no" oninput="renderPreview('satis')" placeholder="12"></div></div>
+      <div class="form-row"><div class="field"><label>Brüt m²</label><input type="number" id="f_m2" oninput="renderPreview('satis')" placeholder="120"></div>
+      <div class="field"><label>EKB No (varsa)</label><input type="text" id="f_ekb" oninput="renderPreview('satis')" placeholder="Enerji Kimlik Belgesi No"></div></div>
+      <div class="form-row full"><div class="field"><label>Hasar Raporu (e-Devlet)</label><input type="text" id="f_hasar" oninput="renderPreview('satis')" placeholder="Hasar durumu..."></div></div>
+      <div class="form-row full"><div class="field"><label>Devir Masrafları</label><select id="f_devir_masraf" onchange="renderPreview('satis')"><option value="">Seçin...</option><option value="yarı yarıya">Yarı Yarıya</option><option value="alıcı tarafından">Alıcı Tarafından</option><option value="satıcı tarafından">Satıcı Tarafından</option></select></div></div>
+    </div></div>
+    <div class="form-section"><div class="fs-head"><span class="fs-icon">💰</span><h3>Satış Bedeli</h3></div><div class="fs-body">
+      <div class="form-row"><div class="field"><label>Satış Bedeli (₺)</label><input type="number" id="f_fiyat" oninput="renderPreview('satis');hesaplaKalan()" placeholder="0"></div>
+      <div class="field"><label>Cayma Parası (₺)</label><input type="number" id="f_kapora" oninput="renderPreview('satis');hesaplaKalan()" placeholder="0"></div></div>
+      <div class="form-row"><div class="field"><label>Nakit (₺)</label><input type="number" id="f_nakit" oninput="renderPreview('satis');hesaplaKalan()" placeholder="0"></div>
+      <div class="field"><label>Konut Kredisi (₺)</label><input type="number" id="f_kredi" oninput="renderPreview('satis');hesaplaKalan()" placeholder="Yoksa boş"></div></div>
+      <div class="form-row full" id="kredi_detay_row" style="display:none"><div class="field"><label>Kredi Bankası</label><input type="text" id="f_kredi_banka" oninput="renderPreview('satis')" placeholder="Banka Adı"></div></div>
+      <div class="form-row full"><div class="field"><label>Kalan (₺) — Otomatik</label><input type="number" id="f_kalan" readonly placeholder="0"></div></div>
+      <div class="form-row"><div class="field"><label>Komisyon (%)</label><input type="number" id="f_komisyon" oninput="renderPreview('satis')" placeholder="2" step="0.1"></div>
+      <div class="field"><label>Tapu Devir Tarihi</label><input type="date" id="f_tapu_tarihi" oninput="renderPreview('satis')"></div></div>
+      <div class="form-row full"><div class="field"><label>Sözleşme Tarihi ve Yeri</label><input type="text" id="f_sozlesme_yeri" oninput="renderPreview('satis')" placeholder="Gebze / ${today}"></div></div>
+    </div></div>
+    <div class="form-section"><div class="fs-head"><span class="fs-icon">📝</span><h3>Notlar</h3></div><div class="fs-body">
+      <div class="form-row full"><div class="field"><label>Notlar</label><textarea id="f_notlar" oninput="renderPreview('satis')" rows="4" placeholder="Özel notlar, eklemeler..."></textarea></div></div>
+    </div></div>`;}
+
+  if(type==='kira'){return `
+    <div class="form-section"><div class="fs-head"><span class="fs-icon">📋</span><h3>Sözleşme Bilgileri</h3></div><div class="fs-body">
+      <div class="form-row"><div class="field"><label>Sözleşme Tarihi</label><input type="date" id="f_tarih" oninput="renderPreview('kira')" value="${today}"></div>
+      <div class="field"><label>Sözleşme Yeri</label><input type="text" id="f_ilce" oninput="renderPreview('kira')" placeholder="Gebze"></div></div>
+      <div class="form-row full"><div class="field"><label>Konutun Açık Adresi</label><input type="text" id="f_adres" oninput="renderPreview('kira')" placeholder="Tam açık adres..."></div></div>
+    </div></div>
+    <div class="form-section"><div class="fs-head"><span class="fs-icon">🏠</span><h3>Kiraya Veren</h3></div><div class="fs-body">
+      <div class="form-row"><div class="field"><label>Adı Soyadı</label><input type="text" id="f_kiralayan" oninput="renderPreview('kira')" placeholder="Ad Soyad"></div>
+      <div class="field"><label>TC Kimlik No</label><input type="text" id="f_kiralayan_tc" oninput="renderPreview('kira')" placeholder="00000000000" maxlength="11"></div></div>
+      <div class="form-row"><div class="field"><label>Açık Adres</label><input type="text" id="f_kiralayan_adres" oninput="renderPreview('kira')" placeholder="Adres..."></div>
+      <div class="field"><label>Telefon</label><input type="text" id="f_kiralayan_tel" oninput="renderPreview('kira')" placeholder="0xxx xxx xx xx"></div></div>
+      <div class="form-row full"><div class="field"><label>IBAN</label><input type="text" id="f_kiralayan_iban" oninput="renderPreview('kira')" placeholder="TR00 0000 0000 0000 0000 0000 00"></div></div>
+      <div class="form-row"><div class="field"><label>Banka Adı</label><input type="text" id="f_banka_adi" oninput="renderPreview('kira')" placeholder="Akbank, Ziraat..."></div><div class="field"></div></div>
+    </div></div>
+    <div class="form-section"><div class="fs-head"><span class="fs-icon">👤</span><h3>Kiracı</h3></div><div class="fs-body">
+      <div class="form-row"><div class="field"><label>Adı Soyadı</label><input type="text" id="f_kiraci" oninput="renderPreview('kira')" placeholder="Ad Soyad"></div>
+      <div class="field"><label>TC Kimlik No</label><input type="text" id="f_kiraci_tc" oninput="renderPreview('kira')" placeholder="00000000000" maxlength="11"></div></div>
+      <div class="form-row"><div class="field"><label>Adres / Mail</label><input type="text" id="f_kiraci_adres" oninput="renderPreview('kira')" placeholder="Adres veya email"></div>
+      <div class="field"><label>Telefon</label><input type="text" id="f_kiraci_tel" oninput="renderPreview('kira')" placeholder="0xxx xxx xx xx"></div></div>
+    </div></div>
+    <div class="form-section"><div class="fs-head"><span class="fs-icon">🤝</span><h3>Müşterek Borçlu – Müteselsil Kefil</h3></div><div class="fs-body">
+      <div class="form-row"><div class="field"><label>Adı Soyadı</label><input type="text" id="f_kefil" oninput="renderPreview('kira')" placeholder="Ad Soyad (opsiyonel)"></div>
+      <div class="field"><label>TC Kimlik No</label><input type="text" id="f_kefil_tc" oninput="renderPreview('kira')" placeholder="00000000000" maxlength="11"></div></div>
+      <div class="form-row"><div class="field"><label>Adres</label><input type="text" id="f_kefil_adres" oninput="renderPreview('kira')" placeholder="Adres..."></div>
+      <div class="field"><label>Telefon</label><input type="text" id="f_kefil_tel" oninput="renderPreview('kira')" placeholder="0xxx xxx xx xx"></div></div>
+    </div></div>
+    <div class="form-section"><div class="fs-head"><span class="fs-icon">💰</span><h3>Kira Bilgileri</h3></div><div class="fs-body">
+      <div class="form-row"><div class="field"><label>Tip</label><select id="f_tip" onchange="renderPreview('kira')"><option value="">Seçin...</option><option>Daire - Konut</option><option>Villa - Konut</option><option>Dükkan - Ticari</option><option>İşyeri - Ticari</option></select></div>
+      <div class="field"><label>Aylık Kira (₺)</label><input type="number" id="f_kira" oninput="renderPreview('kira');hesaplaYillikKira()" placeholder="0"></div></div>
+      <div class="form-row"><div class="field"><label>Yıllık Kira (₺) — Otomatik</label><input type="number" id="f_kira_yillik" readonly placeholder="0"></div>
+      <div class="field"><label>Depozito (₺)</label><input type="number" id="f_depozito" oninput="renderPreview('kira')" placeholder="0"></div></div>
+      <div class="form-row"><div class="field"><label>Kira Başlangıç</label><input type="date" id="f_kira_bas" oninput="renderPreview('kira')" value="${today}"></div>
+      <div class="field"><label>Süre</label><select id="f_kira_sure" onchange="renderPreview('kira')"><option value="1 yıl">1 Yıl</option><option value="2 yıl">2 Yıl</option><option value="3 yıl">3 Yıl</option></select></div></div>
+      <div class="form-row"><div class="field"><label>Artış Oranı (TÜFE %)</label><input type="number" id="f_artis" oninput="renderPreview('kira')" placeholder="TÜFE" step="0.1"></div>
+      <div class="field"><label>Ödeme Günü</label><input type="number" id="f_odeme_gun" oninput="renderPreview('kira')" value="17" min="1" max="31"></div></div>
+      <div class="form-row"><div class="field"><label>Danışman Adı</label><input type="text" id="f_araci_ad" oninput="renderPreview('kira')" value="${currentUser?.name||''}" placeholder="Ad Soyad"></div>
+      <div class="field"><label>Danışman TC</label><input type="text" id="f_araci_tc" oninput="renderPreview('kira')" placeholder="00000000000" maxlength="11"></div></div>
+    </div></div>
+    <div class="form-section"><div class="fs-head"><span class="fs-icon">📦</span><h3>Demirbaş Listesi</h3></div><div class="fs-body">
+      <div class="form-row full"><div class="field"><label>Demirbaşlar</label><textarea id="f_demirbas" oninput="renderPreview('kira')" placeholder="Buzdolabı, çamaşır makinesi..."></textarea></div></div>
+    </div></div>`;}
+}
+
+function hesaplaKalan(){
+  const fiyat=parseFloat(gv('f_fiyat'))||0,nakit=parseFloat(gv('f_nakit'))||0,kredi=parseFloat(gv('f_kredi'))||0;
+  const kalanEl=document.getElementById('f_kalan');
+  if(kalanEl)kalanEl.value=Math.max(0,fiyat-nakit-kredi);
+  const dr=document.getElementById('kredi_detay_row');
+  if(dr)dr.style.display=kredi>0?'grid':'none';
+}
+function hesaplaYillikKira(){
+  const el=document.getElementById('f_kira_yillik');
+  if(el)el.value=(parseFloat(gv('f_kira'))||0)*12;
+  renderPreview('kira');
+}
+window.hesaplaKalan=hesaplaKalan;
+window.hesaplaYillikKira=hesaplaYillikKira;
+
+// ── ÖNİZLEME ─────────────────────────────────────────────────────────────────
+function renderPreview(type){
+  const pb=document.getElementById('previewBody');
+  if(!pb)return;
+  if(type==='satis')pb.innerHTML=pf('Tür','🏡 Satış')+pf('Satıcı',gv('f_satici'))+pf('Alıcı',gv('f_alici'))+pf('Danışman',gv('f_araci_ad'))+pf('Adres',[gv('f_mahalle'),gv('f_ilce'),gv('f_il')].filter(Boolean).join(', '))+pf('Satış Bedeli',gv('f_fiyat')?fmt(gv('f_fiyat'))+' ₺':'')+pf('Cayma Parası',gv('f_kapora')?fmt(gv('f_kapora'))+' ₺':'');
+  else if(type==='kira')pb.innerHTML=pf('Tür','🔑 Kira')+pf('Kiraya Veren',gv('f_kiralayan'))+pf('Kiracı',gv('f_kiraci'))+pf('Adres',gv('f_adres'))+pf('Aylık Kira',gv('f_kira')?fmt(gv('f_kira'))+' ₺':'');
+  else pb.innerHTML=pf('Tür','🚪 Tahliye')+pf('Kiracı',gv('f_kiraci'))+pf('Kiraya Veren',gv('f_kiralayan'))+pf('Tahliye',gv('f_tahliye_tarihi'));
+}
+function pf(lbl,val){const empty=!val;return `<div class="pf"><div class="pf-lbl">${lbl}</div><div class="pf-val${empty?' empty':''}">${empty?'Doldurulmadı':val}</div></div>`;}
+window.renderPreview=renderPreview;
+
+function detectType(){
+  if(document.getElementById('f_satici'))return 'satis';
+  if(document.getElementById('f_tahliye_tarihi'))return 'tahliye';
+  return 'kira';
+}
+
+// ── SÖZLEŞME KAYDET ───────────────────────────────────────────────────────────
+async function generateContract(){
+  const type=detectType();
+  const docNo='SZ-'+new Date().getFullYear()+'-'+String(Math.floor(Math.random()*900)+100);
+  document.getElementById('pdfContent').innerHTML=buildPDF(type,docNo);
+  document.getElementById('pdfModal').classList.remove('hidden');
+  await _saveContract(type,docNo,'tamamlandi');
+  showToast('✓ Sözleşme oluşturuldu ve buluta kaydedildi!');
+}
+async function saveDraft(){
+  const type=detectType();
+  const docNo='TASLAK-'+Date.now().toString().slice(-5);
+  await _saveContract(type,docNo,'taslak');
+  showToast('✓ Taslak buluta kaydedildi!');
+}
+async function _saveContract(type,docNo,durum){
+  const c={id:docNo,type,date:new Date().toISOString().slice(0,10),durum,createdBy:currentUser.uid,assignedTo:currentUser.uid,createdByName:currentUser.name};
+  if(type==='satis'){c.satici=gv('f_satici');c.alici=gv('f_alici');c.adres=gv('f_adres')||[gv('f_mahalle'),gv('f_ilce'),gv('f_il')].filter(Boolean).join(', ');c.fiyat=gv('f_fiyat');}
+  else if(type==='kira'){c.kiralayan=gv('f_kiralayan');c.kiraci=gv('f_kiraci');c.adres=gv('f_adres');c.kira=gv('f_kira');}
+  else{c.kiralayan=gv('f_kiralayan');c.kiraci=gv('f_kiraci');c.adres=gv('f_adres');}
+  showToast('⏳ Kaydediliyor...');
+  await fbSaveContract(c);
+  await fbLoadContracts();
+}
+window.generateContract=generateContract;
+window.saveDraft=saveDraft;
+
+// ── PDF ───────────────────────────────────────────────────────────────────────
+function antet(docNo){
+  const today=new Date().toLocaleDateString('tr-TR',{day:'2-digit',month:'long',year:'numeric'});
+  return `<div class="pdf-letterhead">
+    <div class="pdf-lb-brand">
+      <div class="pdf-lb-icon"><svg width="26" height="26" viewBox="0 0 32 32" fill="none"><rect x="2" y="14" width="28" height="16" rx="1" fill="#c9a84c"/><rect x="6" y="10" width="20" height="6" rx="1" fill="#e0c060"/><rect x="10" y="6" width="12" height="6" rx="1" fill="#c9a84c"/><rect x="5" y="17" width="5" height="4" rx=".5" fill="#1a1a2e" opacity=".45"/><rect x="13.5" y="17" width="5" height="4" rx=".5" fill="#1a1a2e" opacity=".45"/><rect x="22" y="17" width="5" height="4" rx=".5" fill="#1a1a2e" opacity=".45"/></svg></div>
+      <div><div class="pdf-lb-name"><span style="background:linear-gradient(90deg,#4a9fd4,#2dd4bf);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:800;letter-spacing:1.5px">ÇELEBİOĞLU</span> <span style="color:#c87941;font-weight:700;letter-spacing:2px">GAYRİMENKUL</span></div>
+      <div class="pdf-lb-sub">KOCAELİ · GAYRİMENKUL DANIŞMANLIĞI · YETKİ BEL. NO: 4105800</div></div>
+    </div>
+    <div class="pdf-meta"><div class="doc-no">${docNo}</div><br>Tarih: ${today}<br>Danışman: ${currentUser?.name||'—'}</div>
+  </div>`;
+}
+function buildPDF(type,docNo){
+  const today=new Date().toLocaleDateString('tr-TR',{day:'2-digit',month:'long',year:'numeric'});
+  if(type==='satis')return buildSatisPDF(docNo,today);
+  if(type==='kira')return buildKiraPDF(docNo,today);
+  return buildTahliyePDF(docNo,today);
+}
+
+function buildSatisPDF(docNo,today){
+  const tapuTarihi=gv('f_tapu_tarihi')||'…… / …… / ……';
+  const cayma=gv('f_kapora')?fmt(gv('f_kapora'))+' TL':'……………';
+  const caymaOran=gv('f_kapora')&&gv('f_fiyat')?' (Satış bedelinin %'+Math.round((parseFloat(gv('f_kapora'))/parseFloat(gv('f_fiyat')))*100)+' oranında)':'';
+  const komisyon=gv('f_komisyon')||'……';
+  const ilce=gv('f_ilce')||'Gebze';
+  const hasKredi=!!gv('f_kredi');
+  const devir=gv('f_devir_masraf')||'Yarı Yarıya';
+  return antet(docNo)+`
+  <div class="pdf-title-block"><h2>GAYRİMENKUL SATIŞINA CAYMA AKÇELİ ARACILIK SÖZLEŞMESİ</h2><div class="pdf-type-bar">🏡 SATIŞ SÖZLEŞMESİ</div></div>
+  <div class="pdf-ref-box"><div><div class="pdf-ref-k">Sözleşme No</div><div class="pdf-ref-v">${docNo}</div></div><div><div class="pdf-ref-k">Tarih</div><div class="pdf-ref-v">${today}</div></div><div><div class="pdf-ref-k">Düzenleyen</div><div class="pdf-ref-v">${currentUser?.name||'—'}</div></div></div>
+  <div class="pdf-madde-baslik">MADDE-1) TARAFLAR</div>
+  <div class="pdf-taraf-baslik">Emlak Ofisi;</div>
+  <table class="pdf-taraf-tablo">
+    <tr><td>Unvanı</td><td>: Çelebioğlu Gayrimenkul</td></tr>
+    <tr><td>Yetki Belgesi Numarası</td><td>: ${gv('f_araci_lisans')||'4105800'}</td></tr>
+    <tr><td>Sorumlu Emlak Danışmanı</td><td>: ${gv('f_araci_ad')||currentUser?.name||'—'}</td></tr>
+    <tr><td>Adresi</td><td>: ${gv('f_araci_adres')||'Gaziler Mah. Gaziler Cad. 1721 Sk. No: 1/B Gebze/KOCAELİ'}</td></tr>
+    <tr><td>İletişim Bilgileri</td><td>: ${gv('f_araci_tel')||'—'}</td></tr>
+  </table>
+  <p class="pdf-p">İşbu sözleşmede Çelebioğlu Gayrimenkul "Emlak Ofisi" olarak anılacaktır.</p>
+  <div class="pdf-taraf-baslik">Satıcı;</div>
+  <table class="pdf-taraf-tablo">
+    <tr><td>Gerçek Kişi / Adı-Soyadı</td><td>: ${d(gv('f_satici'))}</td></tr>
+    <tr><td>TCKN</td><td>: ${d(gv('f_satici_tc'))}</td></tr>
+    <tr><td>Adres</td><td>: ${d(gv('f_satici_adres'))}</td></tr>
+    <tr><td>E-Mail</td><td>: ${d(gv('f_satici_email'))}</td></tr>
+    <tr><td>Telefon</td><td>: ${d(gv('f_satici_tel'))}</td></tr>
+  </table>
+  <p class="pdf-p">İşbu sözleşmede "Satıcı" olarak anılacaktır.</p>
+  <div class="pdf-taraf-baslik">Alıcı;</div>
+  <table class="pdf-taraf-tablo">
+    <tr><td>Gerçek Kişi / Adı-Soyadı</td><td>: ${d(gv('f_alici'))}</td></tr>
+    <tr><td>TCKN</td><td>: ${d(gv('f_alici_tc'))}</td></tr>
+    <tr><td>Adres</td><td>: ${d(gv('f_alici_adres'))}</td></tr>
+    <tr><td>E-Mail</td><td>: ${d(gv('f_alici_email'))}</td></tr>
+    <tr><td>Telefon</td><td>: ${d(gv('f_alici_tel'))}</td></tr>
+  </table>
+  <p class="pdf-p">İşbu sözleşmede "Alıcı" olarak anılacaktır.</p>
+  <div class="pdf-madde-baslik">MADDE-2) TAŞINMAZA İLİŞKİN BİLGİLER</div>
+  <div class="pdf-tasınmaz-box">
+    <div class="pdf-row"><div class="pdf-key">Cinsi</div><div class="pdf-val">${d(gv('f_tip'))}</div></div>
+    <div class="pdf-row"><div class="pdf-key">İl / İlçe</div><div class="pdf-val">${d(gv('f_il'))} / ${d(gv('f_ilce'))}</div></div>
+    <div class="pdf-row"><div class="pdf-key">Mahalle</div><div class="pdf-val">${d(gv('f_mahalle'))}</div></div>
+    <div class="pdf-row"><div class="pdf-key">Cadde / Sokak</div><div class="pdf-val">${d(gv('f_cadde'))} / ${d(gv('f_sokak'))}</div></div>
+    <div class="pdf-row"><div class="pdf-key">Kapı No</div><div class="pdf-val">${d(gv('f_kapi_no'))}</div></div>
+    <div class="pdf-row"><div class="pdf-key">Bağımsız Bölüm No</div><div class="pdf-val">${d(gv('f_bb_no'))}</div></div>
+    <div class="pdf-row"><div class="pdf-key">Ticari / Konut</div><div class="pdf-val">${d(gv('f_kullanim'))}</div></div>
+    <div class="pdf-row"><div class="pdf-key">Tapu (Ada/Parsel)</div><div class="pdf-val">Ada: ${d(gv('f_ada'))} — Parsel: ${d(gv('f_parsel'))}</div></div>
+    ${gv('f_ekb')?`<div class="pdf-row"><div class="pdf-key">EKB No</div><div class="pdf-val">${gv('f_ekb')}</div></div>`:''}
+    <div class="pdf-row"><div class="pdf-key">Satış Bedeli</div><div class="pdf-val">${gv('f_fiyat')?fmt(gv('f_fiyat'))+' TL':'……………'}</div></div>
+    <div class="pdf-row"><div class="pdf-key">Ödeme Yöntemi</div><div class="pdf-val">${[gv('f_nakit')?'Nakit: '+fmt(gv('f_nakit'))+' TL':'',hasKredi?'Kredi: '+fmt(gv('f_kredi'))+' TL ('+gv('f_kredi_banka')+')':'',gv('f_kalan')&&parseInt(gv('f_kalan'))>0?'Kalan: '+fmt(gv('f_kalan'))+' TL':''].filter(Boolean).join(' + ')||'……………'}</div></div>
+    <div class="pdf-row"><div class="pdf-key">Devir Masrafları</div><div class="pdf-val">${devir}</div></div>
+    ${gv('f_hasar')?`<div class="pdf-row"><div class="pdf-key">Hasar Raporu</div><div class="pdf-val">${gv('f_hasar')}</div></div>`:''}
+  </div>
+  <p class="pdf-p">İşbu sözleşmede "Taşınmaz" olarak anılacaktır.</p>
+  <div class="pdf-madde-baslik">MADDE-3) SÖZLEŞMENİN KONUSU</div>
+  <p class="pdf-p">İşbu Gayrimenkul Satışına Aracılık Sözleşmesi'nin ("Sözleşme") konusu, Taşınmazın mülkiyetini devir işlemini gerçekleştirmek üzere Emlak Ofisi aracılığıyla bir araya gelen Alıcı ile Satıcının hak ve yükümlülükleri ile Emlak Ofisinin haklarını düzenlemekten ibarettir.</p>
+  <div class="pdf-madde-baslik">MADDE-4) GENEL HÜKÜMLER</div>
+  <p class="pdf-p">Alıcı, Satıcının sahibi veya mülkiyetini devretmeye yetkili olduğu Taşınmazı, 2. maddede anılan satış bedeli karşılığında satın almayı kabul etmiştir. Bu sebeple Alıcı ve Satıcı, en geç <strong>${tapuTarihi}</strong> tarihine kadar ilgili tapu müdürlüğüne giderek resmî satış işlemini gerçekleştirmek üzerinde anlaşmıştır.</p>
+  <p class="pdf-p">Alıcı, işbu Sözleşmeden herhangi bir gerekçe göstermeksizin dönebilmek hakkına haiz olmak ve Satıcının Taşınmazı tapuda resmî satış işleminin yapılacağı <strong>${tapuTarihi}</strong> tarihine kadar üçüncü kişilere pazarlamaması, satmaması, kiralamaması veya işbu Sözleşme ile takip ettiği menfaatlerini ihlâl etmemesi için işbu Sözleşme'nin akdedildiği tarihte Satıcıya satış bedelinin <strong>${cayma}${caymaOran}</strong> cayma parası vermeyi kabul etmiştir. Alıcı, <strong>${tapuTarihi}</strong> tarihine kadar yüklendiği edimini yerine getirmez ve/veya tapu dairesinde satış sözleşmesini gerçekleştirmez ise, Satıcının üçüncü kişilere pazarlama, satış, kiralama veya Taşınmaz ile elde edebileceği sair iktisadî menfaatlere ilişkin işlemler yapmamış olması nedeniyle zararına ve mağduriyetine sebebiyet vermiş olacağından, ödemiş olduğu cayma parasının geri ödenmesini, Satıcıdan veya Emlak Ofisinden talep edemeyeceğini gayrikabili rücu, peşinen, beyan, kabul ve taahhüt eder.</p>
+  <div class="pdf-madde-baslik">MADDE-5) HİZMET BEDELİ</div>
+  <p class="pdf-p">Taraflar, <strong>%${komisyon} +KDV</strong> Satıcı ve <strong>%${komisyon} +KDV</strong> Alıcı tarafından ödenecek olmak üzere, Emlak Ofisine toplamda, 2. maddede belirlenen satış bedelinin üzerinden anlaşılan hizmet bedelinin tapuda resmî satış işleminin yapılacağı <strong>${tapuTarihi}</strong> tarihinde ödenmesi üzerinde anlaşmışlardır. Emlak Ofisi, Alıcı ve Satıcıyı bir araya getirmekle hizmet bedeline hak kazanmış sayılır. Taşınmazın, Alıcının eşi, nişanlısı, sözlüsü, ortağı veya temsil ettiği gerçek veya tüzel kişi, ortakları, kan ve sıhri hısımları ve/veya Alıcının herhangi bir dereceden akrabası olan bir üçüncü kişiye veya akrabası olmamakla birlikte herhangi bir yakınına veya tanıdığına satılması veya bu kişiler ile satış vaadi, takas/trampa, barter, kat karşılığı inşaat sözleşmesi veya nihaî hedefi mülkiyetin devri olan sair bir işlemin yapılması ile mülkiyetinin devredilmesi veya devredilmesinin borçlanılması hâllerinde veya Alıcı ile Satıcının, Emlak Ofisinin hizmet bedelini elde etmesini engelleme amacıyla hareket ettikleri herhangi diğer bir ihtimâlde de ve fakat bunlarla sınırlı olmamak üzere, Emlak Ofisi hizmet bedeline hak kazanmış sayılır.</p>
+  <div class="pdf-madde-baslik">MADDE-6) CEZA KOŞULU</div>
+  <p class="pdf-p">Alıcı <strong>${tapuTarihi}</strong> tarihinde Taşınmazı tapu dairesinde satın almaktan vazgeçerse ya da <strong>${tapuTarihi}</strong> tarihine kadar yüklendiği edimini ve/veya tapu dairesinde satış akdini gerçekleştirmezse, Alıcı ve Satıcıyı bir araya getirerek edimini eksiksiz biçimde ifa etmiş olan Emlak Ofisine Taşınmazın taraflarca anlaşılan satış bedeli üzerinden hizmet bedeli tutarınca bedeli cezaî şart olarak ödeyeceğini kabul ve taahhüt eder. Satıcı <strong>${tapuTarihi}</strong> tarihinde Taşınmazı tapu dairesinde satmaktan vazgeçerse ya da <strong>${tapuTarihi}</strong> tarihine kadar yüklendiği edimini ve/veya tapu dairesinde satış akdini gerçekleştirmezse, işbu Sözleşme uyarınca edimini eksiksiz yerine getirmiş olan Emlak Ofisine Taşınmazın taraflarca anlaşılan satış bedelinin üzerinden hizmet bedeli tutarınca bedeli cezaî şart bedeli ödemeyi kabul ve taahhüt eder.</p>
+  <div class="pdf-madde-baslik">MADDE-7) BİLDİRİMLER</div>
+  <p class="pdf-p">Taraflar, işbu Sözleşmenin birinci maddesinde anılan adreslerinin resmî tebligat adresleri olduğunu, bu adresin değişmesi halinde diğer tarafa derhâl yazılı olarak bildireceklerini, aksi hâlde birinci maddede yazılan adrese yapılan tebligatların geçerli olacağını kabul ederler.</p>
+  <div class="pdf-madde-baslik">MADDE-8) DAMGA VERGİSİ</div>
+  <p class="pdf-p">Sözleşme ile ilgili damga vergisi Satıcı ve Alıcı tarafından ödenecektir.</p>
+  <div class="pdf-madde-baslik">MADDE-9) UYUŞMAZLIK ÇÖZÜMÜ</div>
+  <p class="pdf-p">Taraflar arasında <strong>${gv('f_sozlesme_yeri')||today}</strong> tarihinde tanzim edilen işbu Sözleşme yukarıdaki hususlar ile birlikte geçerli olmak üzere taraflarca kabul edilmiş olup, Sözleşmeden doğacak ihtilaflarda <strong>${ilce}</strong> Mahkeme ve İcra Daireleri yetkilidir.</p>
+  <div class="pdf-madde-baslik">NOTLAR:</div>
+  <div class="pdf-tasınmaz-box" style="min-height:80px;white-space:pre-wrap">${gv('f_notlar')||''}</div>
+  <hr class="pdf-divider">
+  <div class="pdf-imza-grid dort">
+    <div class="pdf-imza-box"><div class="pdf-imza-lbl">SATICI</div><div class="pdf-imza-alan"></div><div class="pdf-imza-ad">${gv('f_satici')||'Ad-Soyad:'}</div><div class="pdf-imza-tc">Tckn: ${gv('f_satici_tc')||'—'}</div><div class="pdf-imza-tarih">İmza</div></div>
+    <div class="pdf-imza-box"><div class="pdf-imza-lbl">ALICI</div><div class="pdf-imza-alan"></div><div class="pdf-imza-ad">${gv('f_alici')||'Ad-Soyad:'}</div><div class="pdf-imza-tc">Tckn: ${gv('f_alici_tc')||'—'}</div><div class="pdf-imza-tarih">İmza</div></div>
+    <div class="pdf-imza-box"><div class="pdf-imza-lbl">SORUMLU EMLAK DANIŞMANI</div><div class="pdf-imza-alan"></div><div class="pdf-imza-ad">${gv('f_araci_ad')||currentUser?.name||'—'}</div><div class="pdf-imza-tc">Tckn: ${gv('f_araci_tc')||'—'}</div><div class="pdf-imza-tarih">İmza</div></div>
+    <div class="pdf-imza-box"><div class="pdf-imza-lbl">EMLAK OFİSİ</div><div class="pdf-imza-alan"></div><div class="pdf-imza-ad">Çelebioğlu Gayrimenkul</div><div class="pdf-imza-tc">Tckn: —</div><div class="pdf-imza-tarih">İmza / Kaşe</div></div>
+  </div>
+  <div class="pdf-footer-bar"><span>Çelebioğlu Gayrimenkul · Gaziler Mah. Gaziler Cad. 1721 Sk. No: 1/B Gebze/KOCAELİ</span><span>${docNo} | ${today}</span></div>`;
+}
+
+function buildKiraPDF(docNo,today){
+  const ilce=gv('f_ilce')||'Gebze',odemeGun=gv('f_odeme_gun')||'17';
+  const kiraAylik=gv('f_kira')?fmt(gv('f_kira'))+' TL':'……………';
+  const kiraYillik=gv('f_kira')?fmt(parseFloat(gv('f_kira'))*12)+' TL':'……………';
+  const artis=gv('f_artis')?gv('f_artis')+'%':'';
+  const depozito=gv('f_depozito')?fmt(gv('f_depozito'))+' TL(TÜRK LİRASI)':'……………';
+  const iban=gv('f_kiralayan_iban')||'……………………………………………………………';
+  const banka=gv('f_banka_adi')||'……………';
+  const tarih=gv('f_tarih')||today;
+  const demirbas=gv('f_demirbas')||'';
+  return antet(docNo)+`
+  <div class="pdf-title-block"><h2>KONUT KİRA SÖZLEŞMESİ</h2><div class="pdf-type-bar">🔑 KİRA SÖZLEŞMESİ</div></div>
+  <div class="pdf-ref-box"><div><div class="pdf-ref-k">Sözleşme No</div><div class="pdf-ref-v">${docNo}</div></div><div><div class="pdf-ref-k">Tarih</div><div class="pdf-ref-v">${today}</div></div><div><div class="pdf-ref-k">Düzenleyen</div><div class="pdf-ref-v">${currentUser?.name||'—'}</div></div></div>
+  <div class="pdf-tasınmaz-box" style="margin-bottom:14px">
+    <div class="pdf-row"><div class="pdf-key">SÖZLEŞME TARİH VE YERİ</div><div class="pdf-val">${tarih} — ${ilce}</div></div>
+    <div class="pdf-row"><div class="pdf-key">KONUTUN AÇIK ADRESİ</div><div class="pdf-val">${d(gv('f_adres'))}</div></div>
+  </div>
+  <div class="pdf-tasınmaz-box" style="margin-bottom:14px">
+    <div class="pdf-row"><div class="pdf-key">TİPİ VE KULLANIM AMACI</div><div class="pdf-val">${d(gv('f_tip'))}</div></div>
+    <div class="pdf-row"><div class="pdf-key">BİR AYLIK KİRA BEDELİ</div><div class="pdf-val">${kiraAylik}</div></div>
+    <div class="pdf-row"><div class="pdf-key">BİR YILLIK KİRA BEDELİ</div><div class="pdf-val">${kiraYillik}</div></div>
+    <div class="pdf-row"><div class="pdf-key">KİRA BAŞLANGIÇ TARİHİ</div><div class="pdf-val">${d(gv('f_kira_bas'))}</div></div>
+    <div class="pdf-row"><div class="pdf-key">KİRA SÖZLEŞME SÜRESİ</div><div class="pdf-val">${gv('f_kira_sure')||'1 yıl'}</div></div>
+    <div class="pdf-row"><div class="pdf-key">KİRA ÖDEME ŞEKLİ</div><div class="pdf-val">Aylık peşin, her ayın ${odemeGun}. günü</div></div>
+    <div class="pdf-row"><div class="pdf-key">ÖDENECEK BANKA VE IBAN NO</div><div class="pdf-val">${banka} — ${iban}</div></div>
+    <div class="pdf-row"><div class="pdf-key">ALINAN DEPOZİTO MİKTARI</div><div class="pdf-val">${depozito}</div></div>
+  </div>
+  <div class="pdf-tasınmaz-box" style="margin-bottom:10px">
+    <div class="pdf-row"><div class="pdf-key">KİRAYA VEREN</div><div class="pdf-val"></div></div>
+    <div class="pdf-row"><div class="pdf-key">ADI–SOYADI–TC NO</div><div class="pdf-val">${d(gv('f_kiralayan'))} — ${d(gv('f_kiralayan_tc'))}</div></div>
+    <div class="pdf-row"><div class="pdf-key">AÇIK ADRESİ</div><div class="pdf-val">${d(gv('f_kiralayan_adres'))}</div></div>
+    <div class="pdf-row"><div class="pdf-key">TELEFON NUMARASI</div><div class="pdf-val">${d(gv('f_kiralayan_tel'))}</div></div>
+  </div>
+  <div class="pdf-tasınmaz-box" style="margin-bottom:10px">
+    <div class="pdf-row"><div class="pdf-key">KİRACI</div><div class="pdf-val"></div></div>
+    <div class="pdf-row"><div class="pdf-key">ADI-SOYADI-TC NO</div><div class="pdf-val">${d(gv('f_kiraci'))} — ${d(gv('f_kiraci_tc'))}</div></div>
+    <div class="pdf-row"><div class="pdf-key">EV ADRESİ / MAİL</div><div class="pdf-val">${d(gv('f_kiraci_adres'))}</div></div>
+    <div class="pdf-row"><div class="pdf-key">TELEFON NUMARASI</div><div class="pdf-val">${d(gv('f_kiraci_tel'))}</div></div>
+  </div>
+  ${gv('f_kefil')?`<div class="pdf-tasınmaz-box" style="margin-bottom:10px">
+    <div class="pdf-row"><div class="pdf-key">MÜŞTEREK BORÇLU MÜTESELSİL KEFİL</div><div class="pdf-val"></div></div>
+    <div class="pdf-row"><div class="pdf-key">ADI-SOYADI-TC NO</div><div class="pdf-val">${gv('f_kefil')} — ${d(gv('f_kefil_tc'))}</div></div>
+    <div class="pdf-row"><div class="pdf-key">İŞ YA DA EV ADRESİ</div><div class="pdf-val">${d(gv('f_kefil_adres'))}</div></div>
+    <div class="pdf-row"><div class="pdf-key">TELEFON NUMARASI</div><div class="pdf-val">${d(gv('f_kefil_tel'))}</div></div>
+  </div>`:''}
+  <div class="pdf-madde-baslik" style="margin-top:18px">A – Genel Koşullar</div>
+  <p class="pdf-p">Kiracı, mecuru kısmen veya tamamen başkasına kiraya veremez. Devir ve ciro edemez ve 3.şahısların istifadesine tahsis edemez.</p>
+  <p class="pdf-p">Kiracı mecuru anlaşmada yazılı olduğu şekilde, KONUT OLARAK kullanma zorundadır. Kullanma tarzını, şeklini değiştiremez. Bu hususta değişiklik, kiraya verenin yazılı muvafakati ile yapılabilir. Aksi halin tahliye sebebi teşkil edeceğini taraflar kabul, beyan ve taahhüt ederler.</p>
+  <p class="pdf-p">Kiracı mecuru yasal tebligat adresi kabul etmiş olup, işbu kontrat yürürlükte olduğu sürece bu adrese yapılacak her türlü tebligatın (bila tebliğ dönmesi hali dahil) usule uygun ve şahsına yapılmış sayılacağını şimdiden kabul ve beyan eder.</p>
+  <p class="pdf-p">Kiracı, mecur dahilinde, mecurun menfaatine de olsa kiraya verenin yazılı rıza ve muvafakati olmadan değişiklik, tamirat ve ilave yapamaz. Taşıyıcı kolon ve kirişleri yıkamaz. Her hal ve şartta ana yapıya ve statiğine zarar verecek işler yapılamaz. Bu madde çerçevesi içinde yazılı onay alınarak dahi yapılan işlerden ortaya çıkacak hukuki, cezai, mali ve idari tüm ceza ve sorumluluklar kiracıya aittir. Kiracı kiraladığı şeyi ne halde buldu ise kiraya verene o halde ve adete göre teslim etmeye mecburdur.</p>
+  <p class="pdf-p">Kiracı Yasa ve Belediye mevzuatına ve nizamlara harfiyen uymak zorundadır.</p>
+  <p class="pdf-p">Kiracı, ödemeyi AYLIK periyodlarda peşin olarak yapacaktır. Kiracının ödemeyi yapmakta gecikmesi halinde 6098 sayılı Türk Borçlar Kanunu'nun konut ve çatılı işyeri kiralarında kiracının temerrüdüne ilişkin hükümleri uygulanır.</p>
+  <p class="pdf-p">Mecurda kullanılacak olan elektrik, doğalgaz, su, kapıcı, yönetim ve yönetici giderleri, çevre temizliği, çöp vergisi kiracıya aittir. Binaya ait vergi ve demirbaş giderleri mal sahibine aittir.</p>
+  <p class="pdf-p">İşbu koşullar mezkûr mecura ait kira sözleşmesinin ayrılmaz bir parçasıdır. Taraflar hükümlerin aynen tatbik edileceğini kabul, beyan ve taahhüt ederler.</p>
+  <p class="pdf-p">Bu sözleşmede yazılı bulunmayan hükümlere ihtiyaç duyulduğunda yürürlükte bulunan Borçlar Kanunu, kat mülkiyeti kanunu ve Emsal Yargıtay kararları uygulanır.</p>
+  <p class="pdf-p">İhtilaf vukuunda mecurun adresindeki yer mahkemesi ve icra daireleri yetkilidir. Tebligat adresleri yukarda belirtilen adreslerdir.</p>
+  <p class="pdf-p">Kiracı mecuru her türlü tebligat için kanuni ikametgâh adresi kabul etmiştir. İşbu kira sözleşmesinin tarafları ve kefil, adres değişikliğini ve yeni adresini karşı tarafa bir hafta içerisinde bildirmek zorundadır. Aksi takdirde gönderilecek ihtarname, ödeme emri işbu sözleşmede yazılı adrese gönderilir ve bila tebliğ dönse dahi alınmış kabul edilir.</p>
+  <p class="pdf-p">Kiracıdan, kiralama müddeti sonunda dairenin tahliyesi halinde (elektrik, su, doğalgaz ve apartman ortak giderlerine ait) borcu olmadığına dair makbuzları ibraz etmelidir.</p>
+  <p class="pdf-p">Kiracının, kiralanan dairenin içinde ve dışında yaptıracağı tezyinat masrafları kendisine ait olacak ve mukavele müddeti bittiğinde yapılan her türlü masraf için tazminat istemeye hakkı olmayacak ve bu gayrimenkulde yer alan inşaatın tamamı mal sahibinin olacaktır.</p>
+  <div class="pdf-madde-baslik">B - Özel Koşullar;</div>
+  <p class="pdf-p">Sözleşme tarihi itibarı ile, kiralanan yere ait su, elektrik, doğalgaz, çöp vergisi, yönetim giderleri ve her türlü abone masrafları ile her türlü bina ortak giderleri kiracıya aittir. Bu giderlerin hepsinin veya herhangi birinin ödenmemesi sözleşmeye aykırılık sebebiyle, sözleşmenin feshine ve tahliye hakkı doğmasına sebep teşkil eder. Mecur'a ait Elektrik, doğalgaz su aboneliğini, kiracı bir ay içinde kendi sorumlu olacak şekilde yapacaktır, bunu yapmaması sözleşmeye aykırılık ve sözleşmenin feshi sebebidir. Bu maddenin düzenlemesi açısından, kiracı ve kefil TBK 346. da yazan haklarından feragat ettiğini ve bu maddede yazılı şartları kabul ettiklerini şimdiden kabul ve taahhüt eder. Kiracı, kiralananın olağan kullanımı için gerekli temizlik ve bakım giderlerini ödemekle yükümlüdür.</p>
+  <p class="pdf-p">Kiracı Yönetim Planına, Kat Mülkiyeti Kanuna ve Borçlar Kanunu'na ve Kiracı site ve apartman yönetiminin tüm kurallarına uymakla yükümlü olup kurallara uymamak tahliye sebebidir. Site yönetiminin aldığı/alacağı kurallara aynen uymayı kabul ve taahhüt eder.</p>
+  <p class="pdf-p">Kira bedeli, İşletme gideri (aidat), kiracının sebep olacağı her türlü zarar, kiracı ile bağlı olmaksızın, bu mukavele ile bağlı olarak, kiracının oturduğu sürece ve kira akdinin hitamından sonra dahi müşterek borçlu müteselsil kefilin kefalet taahhüdü kapsamındadır.</p>
+  <p class="pdf-p">Kiracı tahliye anında mecuru aldığı gibi eksiksiz olarak teslim ile yükümlüdür. Gerektiğinde, boya badana ve kullanmadan doğan masraflardan tümü mal sahibine ödenecektir. Bu bedeller öncelikle depozitodan karşılanacak yetmediği takdirde kiraya verenin ilk yazılı talebinden itibaren üç gün içinde ödenecektir. Bu maddenin düzenlemesi açısından, kiracı ve kefil TBK 346. da yazan haklarından feragat ettiğini ve bu maddede yazılı şartları kabul ettiklerini şimdiden kabul ve taahhüt eder. Kiracı, kira sözleşmesinin sonunda, kiralananı aldığı şekilde, kiraya verene teslim etmek zorundadır: Keza kiralananla birlikte teslim edilen demirbaşlar da alındığı şekilde, kiralanana teslim edilmediği takdirde, oluşan hasarların bedelinin kiraya ve ödenmesi veya eski hale getirilmesi zorunludur.</p>
+  <p class="pdf-p">İş bu kira sözleşmesinin konusunu teşkil ve 6098 sayılı Borçlar Kanunu kapsamında kiraya verilen mecur kiracı tarafından kiralama amacına uygun olarak bizzat kendi ihtiyacı için kullanacaktır. Kiracı, kiralanan taşınmazların hiçbirini başkasının kullanımına her ne suretle olursa olsun sunamayacağı gibi, kiralayamaz ve devredemez. Bu durum akde aykırılık sebebi ile akdin feshi sebebidir.</p>
+  <p class="pdf-p">Kiracı, kiraya verenin yazılı muvafakatini alarak taşınmaz üzerinde mecuru kullanışlı hale getirmek, güzelleştirmek ve sair amaçlı yapacağı her türlü tesisat ilave tadilat ve dekorasyonu bila bedel kiraya verene terk edecektir.</p>
+  <p class="pdf-p">Kiralanana ait elektrik, su yakıt giderleri, kalorifer tesisatı ve diğer tesisatların kullanılmasından kaynaklanan bakım onarım masrafları, resmi makamlarca talep edilecek elektrik, doğalgaz ve su saatleri açtırma, kapatma ve değiştirme bakım ve onarım masrafları, tesise iştirak bedeli ve güvence parası ve benzeri giderler kiracı tarafından karşılanacaktır.</p>
+  <p class="pdf-p">Kiracı kiralananın direncini ve inşa biçimini bozabilecek herhangi bir davranışta bulunamaz.</p>
+  <p class="pdf-p">Kiracı belediye ve itfaiye talimatlarına uymayı, kiralananda yanıcı, patlayıcı ve sair her türlü tehlikeli malzeme bulundurmamayı, aksi halde doğacak zararları tazmin etmeyi beyan, kabul ve taahhüt etmiştir.</p>
+  <p class="pdf-p">Sözleşme'nin uygulanmasında Kiraya Veren veya Kiracı tarafından aktarılmış ya da bundan sonra aktarılacak olan Kişisel Verilere ilişkin olarak Kiraya Veren, 6698 sayılı Kişisel Verilerin Korunması Kanunu'nda yer alan ilkelere uygun olarak bu verileri işlemek, saklamak, veri güvenliğini sağlamak ve Kiracının izni olmaksızın üçüncü kişilere aktarmamakla yükümlüdür.</p>
+  <p class="pdf-p">Kiracı kiralananın su, elektrik, ısınma ve sair tesisatlarının ve ekipmanlarının (kombi vs.) gerekli periyodik bakımlarını bizzat yaptırmakla yükümlü olup, tesisatlarda oluşabilecek arızalardan doğacak maddi zararları kiraya verenden isteyemez.</p>
+  <p class="pdf-p">Kira sözleşmesinin devam etmesi halinde takip eden diğer yıllar için kira artışı TÜFE${artis?' ('+artis+')':''} oranında artırılacaktır ve işbu sözleşme 1(bir) yıl daha aynı maddeler geçerli olmak üzere yenilenmiş sayılacaktır.</p>
+  <p class="pdf-p">Kira bedeli AYLIK OLARAK ÖDENECEKTİR. Kira bedeli her ayın ${odemeGun}. Günü arasında (en geç ayın ${odemeGun}'inde) ödenecektir.</p>
+  <p class="pdf-p">Kiralanan mecura ilişkin olarak emlak vergisi ile gayrimenkulün aynına ilişkin vergiler hariç olmak üzere, tahakkuk edecek su, elektrik, doğalgaz bedelleri ve çevre temizlik gibi vergiler ile bina için belirlenmiş olduğu ortak giderlerin tamamı kiracı tarafından ayrıca ödenecektir.</p>
+  <p class="pdf-p">Kiralanan dairede ve demirbaşlarda herhangi bir zarar-ziyan olmadığı, daire sahibine kira, elektrik, su, doğal gaz ve yönetim giderlerine ait bir borç olmadığı tevsik edildiğinde, mal sahibi, depozitoyu bila faiz aynen iade etmeyi, daire ve demirbaşlarda zarar-ziyan ve borçların mevcudiyeti durumunda ise kiracı, bunun depozitodan tazmini/mahsubunu peşinen kabul ederler. Kiracı hiçbir şekilde depozitoyu kiradan mahsup edemez, teminatlardan faiz isteyemez.</p>
+  <p class="pdf-p">Depozito bedeli <strong>${depozito}</strong> olarak ev sahibinin: <strong>${iban} (${banka})</strong> numaralı hesabına yatırılmıştır. (TAHLİYE DURUMUNDA AYNI ÜCRETİ ALACAKTIR)</p>
+  <p class="pdf-p">Kiralananın borçsuz, hasarsız tahliyesine müteakip, en geç 7 gün içerisinde depozito bedeli kiracıya iade edecektir. (DAİRE BOYALI TESLİM EDİLMİŞTİR.)</p>
+  <p class="pdf-p">İşbu belirli süreli kira sözleşmesinin süresinin sona ermesine dayalı olarak feshi ve uzaması, 6098 sayılı Türk Borçlar Kanunu'nun 347. maddesinde belirtilen şekilde gerçekleşir.</p>
+  <p class="pdf-p">Kira sözleşmesi, hitamından evvel tarafların tek taraflı fesih iradesi ile haklı bir neden dayandırılmaksızın feshedilemez.</p>
+  <p class="pdf-p">Müşterek borçlu – müteselsil kefilin kefalet süresi 1(bir) yıl ve işbu sözleşmede yazılı olan kira bedeli kadar olup, sözleşme aynı koşullarda bir yıl daha uzamış olduğu takdirde Müşterek borçlu – müteselsil kefalet aynı şekilde devam eder.</p>
+  <p class="pdf-p">Kiracı apartman/site ile ilgili kararlara aynen uyacaktır.</p>
+  <p class="pdf-p">Kiracı, kira sözleşmesinin sona ermesi veya gayrimenkulün satılığa çıkartılması halinde, kiralananın gezilmesine ve incelenmesine izin vermek zorundadır. Bu izin süreleri azami haftada 2 gün ve ikişer saat şeklinde olacaktır. İşbu günler kiracı ve kiraya veren tarafından ortak şekilde belirlenemezse her haftanın Çarşamba ve Cumartesi günleri 17.00-19.00 saatleri arasında olacaktır.</p>
+  <p class="pdf-p">İş bu kira kontratı 13 genel 24 özel madde'den ibaret sözleşme tüm hükümleri okuduktan ve anlaşıldıktan sonra 2 nüsha düzenlenip <strong>${tarih}</strong> Tarihinde imza edilmiştir.</p>
+  <hr class="pdf-divider">
+  <div class="pdf-imza-grid iki">
+    <div class="pdf-imza-box"><div class="pdf-imza-lbl">KİRACI</div><div class="pdf-imza-alan"></div><div class="pdf-imza-ad">${gv('f_kiraci')||'—'}</div><div class="pdf-imza-tc">TC: ${d(gv('f_kiraci_tc'))}</div><div class="pdf-imza-tarih">Tarih: ${tarih}</div></div>
+    <div class="pdf-imza-box"><div class="pdf-imza-lbl">KİRAYA VEREN</div><div class="pdf-imza-alan"></div><div class="pdf-imza-ad">${gv('f_kiralayan')||'—'}</div><div class="pdf-imza-tc">TC: ${d(gv('f_kiralayan_tc'))}</div><div class="pdf-imza-tarih">Tarih: ${tarih}</div></div>
+  </div>
+  ${gv('f_kefil')?`<div class="pdf-imza-grid" style="grid-template-columns:1fr;max-width:50%;margin-top:14px"><div class="pdf-imza-box"><div class="pdf-imza-lbl">MÜŞTEREK BORÇLU MÜTESELSİL KEFİL</div><div class="pdf-imza-alan"></div><div class="pdf-imza-ad">${gv('f_kefil')}</div><div class="pdf-imza-tc">TC: ${d(gv('f_kefil_tc'))}</div><div class="pdf-imza-tarih">Tarih: ${tarih}</div></div></div>`:''}
+  ${demirbas?`<hr class="pdf-divider"><div class="pdf-madde-baslik">DEMİRBAŞ LİSTESİ</div><div class="pdf-tasınmaz-box"><p class="pdf-p" style="margin:0;white-space:pre-wrap">${demirbas}</p></div>`:''}
+  <div class="pdf-footer-bar"><span>Çelebioğlu Gayrimenkul · Gaziler Mah. Gaziler Cad. 1721 Sk. No: 1/B Gebze/KOCAELİ</span><span>${docNo} | ${today}</span></div>`;
+}
+
+function buildTahliyePDF(docNo,today){
+  const kiraSozTarih=gv('f_kira_sozlesme_tarihi')||'…… / …… / ……';
+  const taahhutTarih=gv('f_tarih')||today;
+  const tahliyeTarih=gv('f_tahliye_tarihi')||'…… / …… / ……';
+  return antet(docNo)+`
+  <div class="pdf-title-block"><h2>T A H L İ Y E &nbsp;&nbsp;&nbsp; T A A H H Ü D Ü</h2><div class="pdf-type-bar">🚪 TAHLİYE TAAHHÜDÜ</div></div>
+  <div class="pdf-ref-box"><div><div class="pdf-ref-k">Belge No</div><div class="pdf-ref-v">${docNo}</div></div><div><div class="pdf-ref-k">Taahhüt Tarihi</div><div class="pdf-ref-v">${taahhutTarih}</div></div><div><div class="pdf-ref-k">Düzenleyen</div><div class="pdf-ref-v">${currentUser?.name||'—'}</div></div></div>
+  <div class="pdf-tasınmaz-box" style="margin-bottom:14px">
+    <div class="pdf-row"><div class="pdf-key">TAHLİYE TAAHHÜDÜNDE BULUNAN KİRACI</div><div class="pdf-val"></div></div>
+    <div class="pdf-row"><div class="pdf-key">ADI-SOYADI</div><div class="pdf-val">${d(gv('f_kiraci'))}</div></div>
+    <div class="pdf-row"><div class="pdf-key">TC KİMLİK NO</div><div class="pdf-val">${d(gv('f_kiraci_tc'))}</div></div>
+  </div>
+  <div class="pdf-tasınmaz-box" style="margin-bottom:14px">
+    <div class="pdf-row"><div class="pdf-key">KİRAYA VEREN</div><div class="pdf-val"></div></div>
+    <div class="pdf-row"><div class="pdf-key">ADI-SOYADI</div><div class="pdf-val">${d(gv('f_kiralayan'))}</div></div>
+    <div class="pdf-row"><div class="pdf-key">TC KİMLİK NO</div><div class="pdf-val">${d(gv('f_kiralayan_tc'))}</div></div>
+  </div>
+  <div class="pdf-tasınmaz-box" style="margin-bottom:14px">
+    <div class="pdf-row"><div class="pdf-key">TAHLİYE TAAHHÜDÜNE KONU TAŞINMAZ</div><div class="pdf-val"></div></div>
+    <div class="pdf-row"><div class="pdf-key">İL</div><div class="pdf-val">${gv('f_il')||'……'}</div></div>
+    <div class="pdf-row"><div class="pdf-key">İLÇE</div><div class="pdf-val">${gv('f_ilce')||'……'}</div></div>
+    <div class="pdf-row"><div class="pdf-key">MAHALLE</div><div class="pdf-val">${gv('f_mahalle')||'……'}</div></div>
+    <div class="pdf-row"><div class="pdf-key">ADA</div><div class="pdf-val">${gv('f_ada')||'……'}</div></div>
+    <div class="pdf-row"><div class="pdf-key">PARSEL</div><div class="pdf-val">${gv('f_parsel')||'……'}</div></div>
+    <div class="pdf-row"><div class="pdf-key">BAĞIMSIZ BÖLÜM NO</div><div class="pdf-val">${gv('f_bb_no')||'……'}</div></div>
+    <div class="pdf-row"><div class="pdf-key">AÇIK ADRESİ</div><div class="pdf-val">${gv('f_adres')||'……………………………………………………………………'}</div></div>
+  </div>
+  <div class="pdf-tasınmaz-box" style="margin-bottom:18px">
+    <div class="pdf-row"><div class="pdf-key">KİRA SÖZLEŞMESİ TARİHİ</div><div class="pdf-val">${kiraSozTarih}</div></div>
+    <div class="pdf-row"><div class="pdf-key">TAHLİYE TAAHHÜDÜ TARİHİ</div><div class="pdf-val">${taahhutTarih}</div></div>
+    <div class="pdf-row"><div class="pdf-key">KİRALANANIN TAHLİYE TARİHİ</div><div class="pdf-val"><strong>${tahliyeTarih}</strong></div></div>
+  </div>
+  <div class="pdf-madde-baslik">AÇIKLAMA / TAAHHÜT :</div>
+  <div class="pdf-not-box" style="line-height:2.1;font-size:12px">
+    <strong>${kiraSozTarih}</strong> tarihli kira sözleşmesi ile kiralamış bulunduğum ve halen kiracı olarak kullanmakta bulunduğum; <strong>${gv('f_il')||'……'} / ${gv('f_ilce')||'……'} / ${gv('f_mahalle')||'……'}</strong> Mahallesi, Ada: <strong>${gv('f_ada')||'……'}</strong>, Parsel: <strong>${gv('f_parsel')||'……'}</strong>, Bağımsız Bölüm No: <strong>${gv('f_bb_no')||'……'}</strong>, Açık Adresi: <strong>${gv('f_adres')||'……………………………………………………………………'}</strong> olan kiralananı; ayrıca hiçbir ihtar, ihbar veya protesto çekilmesine gerek kalmaksızın, kayıtsız ve şartsız olarak, 6098 sayılı Türk Borçlar Kanununun 352 v.d. maddeleri gereğince <strong>${tahliyeTarih}</strong> tarihinde tahliye edeceğimi, kiralananı boş, temiz, mükemmel ve sözleşmede belirtilen şekli ile kiraya verene teslim edeceğimi, kabul, beyan ve taahhüt ederim.
+  </div>
+  <hr class="pdf-divider">
+  <div class="pdf-imza-grid iki">
+    <div class="pdf-imza-box"><div class="pdf-imza-lbl">TAHLİYE TAAHHÜDÜNDE BULUNAN KİRACI</div><div class="pdf-imza-alan"></div><div class="pdf-imza-ad">${gv('f_kiraci')||'—'}</div><div class="pdf-imza-tc">TC: ${d(gv('f_kiraci_tc'))}</div><div class="pdf-imza-tarih">Tarih: ${taahhutTarih}</div></div>
+    <div class="pdf-imza-box"><div class="pdf-imza-lbl">KİRAYA VEREN</div><div class="pdf-imza-alan"></div><div class="pdf-imza-ad">${gv('f_kiralayan')||'—'}</div><div class="pdf-imza-tc">TC: ${d(gv('f_kiralayan_tc'))}</div><div class="pdf-imza-tarih">Tarih: ${taahhutTarih}</div></div>
+  </div>
+  <div class="pdf-footer-bar"><span>Çelebioğlu Gayrimenkul · Gaziler Mah. Gaziler Cad. 1721 Sk. No: 1/B Gebze/KOCAELİ</span><span>${docNo} | ${today}</span></div>`;
+}
+
+// ── YAZDIR ────────────────────────────────────────────────────────────────────
+function printPDF(){
+  const content=document.getElementById('pdfContent').innerHTML;
+  const printWin=window.open('','_blank','width=900,height=700');
+  printWin.document.write(`<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><title>Çelebioğlu Gayrimenkul</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{font-family:'DM Sans',sans-serif;background:#fff;color:#1a1812;font-size:11.5px;line-height:1.8}.pdf-doc{padding:28px 36px}.pdf-letterhead{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:18px;border-bottom:2.5px solid #1a1a2e}.pdf-lb-brand{display:flex;align-items:center;gap:12px}.pdf-lb-icon{width:44px;height:44px;background:#1a1a2e;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}.pdf-lb-name{font-size:20px;font-weight:800}.pdf-lb-sub{font-size:9px;color:#8a8474;margin-top:2px}.pdf-meta{text-align:right;font-size:10px;color:#6b7a99;line-height:1.9}.doc-no{font-family:'DM Mono',sans-serif;font-size:12px;font-weight:700;background:#f0ede4;padding:3px 10px;border-radius:5px;color:#1a1812;display:inline-block;margin-bottom:4px}.pdf-title-block{text-align:center;margin:20px 0;background:#f5f5f2;border-radius:8px;padding:20px}.pdf-title-block h2{font-family:'Playfair Display',serif;font-size:14px;color:#1a1812;margin-bottom:8px;letter-spacing:1.5px;text-transform:uppercase}.pdf-type-bar{display:inline-block;padding:5px 18px;background:#1a1a2e;color:#c9960d;font-size:9px;font-weight:700;letter-spacing:2px;border-radius:100px}.pdf-ref-box{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;background:#f9f7f2;border:1px solid #e8e4d8;border-radius:7px;padding:12px 16px;margin-bottom:20px}.pdf-ref-k{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:#8a8474;margin-bottom:3px}.pdf-ref-v{font-size:12px;font-weight:600;color:#1a1812}.pdf-madde-baslik{font-size:11px;font-weight:700;color:#1a1812;margin:16px 0 7px;text-transform:uppercase;letter-spacing:.5px}.pdf-p{margin-bottom:9px;text-align:justify;line-height:1.85;font-size:11px;color:#1a1812}.pdf-taraf-tablo{width:100%;border-collapse:collapse;margin-bottom:10px;font-size:10.5px}.pdf-taraf-tablo td{padding:3px 6px;vertical-align:top;line-height:1.6}.pdf-taraf-tablo td:first-child{width:150px;color:#8a8474;font-weight:600;font-size:10px}.pdf-taraf-baslik{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#5a5040;margin:8px 0 4px;padding:3px 6px;background:#f0ede4;border-radius:4px}.pdf-tasınmaz-box{background:#faf8f4;border:1px solid #ddd9ce;border-radius:6px;padding:12px 16px;margin:8px 0 14px}.pdf-row{display:grid;grid-template-columns:160px 1fr;gap:4px;margin-bottom:4px;font-size:10.5px}.pdf-row:last-child{margin-bottom:0}.pdf-key{color:#8a8474;font-weight:600;font-size:10px}.pdf-val{color:#1a1812}.pdf-divider{border:none;border-top:1px solid #ddd9ce;margin:16px 0}.pdf-not-box{background:#f5e9c0;border:1px solid #d4a017;border-radius:6px;padding:12px 16px;margin:12px 0;font-size:11px;line-height:2}.pdf-imza-grid{display:grid;gap:16px;margin-top:28px}.pdf-imza-grid.iki{grid-template-columns:1fr 1fr}.pdf-imza-grid.dort{grid-template-columns:1fr 1fr 1fr 1fr}.pdf-imza-box{border:1px solid #c8c0b0;border-radius:6px;padding:12px 14px}.pdf-imza-lbl{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#8a8474;margin-bottom:8px}.pdf-imza-alan{height:48px;border-bottom:1.5px solid #1a1812;margin-bottom:8px}.pdf-imza-ad{font-size:11px;font-weight:600;color:#1a1812}.pdf-imza-tc{font-size:9.5px;color:#8a8474;margin-top:2px}.pdf-imza-tarih{font-size:9.5px;color:#8a8474;margin-top:4px}.pdf-footer-bar{margin-top:24px;padding-top:10px;border-top:1px solid #ddd9ce;display:flex;justify-content:space-between;font-size:9px;color:#aaa}@page{size:A4;margin:10mm 12mm}@media print{body{margin:0}}</style></head>
+<body><div class="pdf-doc">${content}</div>
+<script>window.onload=function(){window.print();window.onafterprint=function(){window.close();};};<\/script></body></html>`);
+  printWin.document.close();
+}
+function closePdfModal(){document.getElementById('pdfModal').classList.add('hidden');}
+window.printPDF=printPDF;
+window.closePdfModal=closePdfModal;
+
+// ── SÖZLEŞME TABLOSU ─────────────────────────────────────────────────────────
+function renderContractTable(list,showDelete=true){
+  if(!list.length)return '<div class="empty-state">Henüz sözleşme yok.</div>';
+  const tn={satis:'🏡 Satış',kira:'🔑 Kira',tahliye:'🚪 Tahliye'};
+  const db={tamamlandi:'<span class="badge badge-ok">Tamamlandı</span>',taslak:'<span class="badge badge-taslak">Taslak</span>'};
+  const isAdmin=currentUser&&currentUser.role==='admin';
+  return `<table><thead><tr><th>No</th><th>Tür</th><th>Taraflar</th><th>Mülk</th><th>Tarih</th><th>Durum</th>${isAdmin?'<th>Danışman</th>':''}<th>İşlem</th></tr></thead><tbody>`+
+  list.map(c=>{
+    const taraf=c.type==='satis'?`${esc(c.satici)||'—'} → ${esc(c.alici)||'—'}`:c.type==='kira'?`${esc(c.kiralayan)||'—'} → ${esc(c.kiraci)||'—'}`:esc(c.kiralayan)||'—';
+    const badge=c.type==='satis'?'badge-satis':c.type==='kira'?'badge-kira':'badge-aracilik';
+    const danismanCell=isAdmin?`<td><span style="font-size:12px">${esc(c.createdByName)||'—'}</span></td>`:'';
+    const safeId=esc(c.id);
+    return `<tr><td><span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)">${safeId}</span></td><td><span class="badge ${badge}">${tn[c.type]}</span></td><td>${taraf}</td><td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.adres)||'—'}</td><td>${esc(c.date)||'—'}</td><td>${db[c.durum]||''}</td>${danismanCell}<td style="display:flex;gap:6px"><button class="btn-sm" onclick="viewContract('${safeId}')">Görüntüle</button>${showDelete&&isAdmin?`<button class="btn-sm danger" onclick="deleteContract('${safeId}')">Sil</button>`:''}</td></tr>`;
+  }).join('')+'</tbody></table>';
+}
+
+function renderContracts(){
+  const visible=getVisibleContracts();
+  const filtered=visible.filter(c=>{
+    const mt=currentFilter==='hepsi'||c.type===currentFilter;
+    const q=currentSearchQ.toLowerCase();
+    return mt&&(!q||JSON.stringify(c).toLowerCase().includes(q));
+  });
+  document.getElementById('contractsTable').innerHTML=renderContractTable(filtered);
+  document.getElementById('contractCount').textContent=`${filtered.length} Sözleşme`;
+}
+function filterContracts(f,btn){currentFilter=f;document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderContracts();}
+function searchContracts(q){currentSearchQ=q;renderContracts();}
+window.filterContracts=filterContracts;
+window.searchContracts=searchContracts;
+
+function viewContract(id){
+  const c=contracts.find(x=>x.id===id);
+  if(!c)return;
+  const today=new Date().toLocaleDateString('tr-TR',{day:'2-digit',month:'long',year:'numeric'});
+  const titles={satis:'GAYRİMENKUL SATIŞINA CAYMA AKÇELİ ARACILIK SÖZLEŞMESİ',kira:'KONUT KİRA SÖZLEŞMESİ',tahliye:'TAHLİYE TAAHHÜDÜ'};
+  const icons={satis:'🏡',kira:'🔑',tahliye:'🚪'};
+  let taraflar='',mali='';
+  if(c.type==='satis'){taraflar=`<div class="pdf-row"><div class="pdf-key">Satıcı</div><div class="pdf-val">${esc(c.satici)||'—'}</div></div><div class="pdf-row"><div class="pdf-key">Alıcı</div><div class="pdf-val">${esc(c.alici)||'—'}</div></div>`;mali=`<div class="pdf-row"><div class="pdf-key">Satış Bedeli</div><div class="pdf-val">${c.fiyat?fmt(c.fiyat)+' ₺':'—'}</div></div>`;}
+  else if(c.type==='kira'){taraflar=`<div class="pdf-row"><div class="pdf-key">Kiraya Veren</div><div class="pdf-val">${esc(c.kiralayan)||'—'}</div></div><div class="pdf-row"><div class="pdf-key">Kiracı</div><div class="pdf-val">${esc(c.kiraci)||'—'}</div></div>`;mali=`<div class="pdf-row"><div class="pdf-key">Aylık Kira</div><div class="pdf-val">${c.kira?fmt(c.kira)+' ₺':'—'}</div></div>`;}
+  else{taraflar=`<div class="pdf-row"><div class="pdf-key">Kiraya Veren</div><div class="pdf-val">${esc(c.kiralayan)||'—'}</div></div><div class="pdf-row"><div class="pdf-key">Kiracı</div><div class="pdf-val">${esc(c.kiraci)||'—'}</div></div>`;mali='';}
+  document.getElementById('pdfContent').innerHTML=`${antet(esc(c.id))}<div class="pdf-title-block"><h2>${titles[c.type]}</h2><div class="pdf-type-bar">${icons[c.type]} ${c.type.toUpperCase()}</div></div><div class="pdf-ref-box"><div><div class="pdf-ref-k">No</div><div class="pdf-ref-v">${esc(c.id)}</div></div><div><div class="pdf-ref-k">Tarih</div><div class="pdf-ref-v">${esc(c.date)||'—'}</div></div><div><div class="pdf-ref-k">Danışman</div><div class="pdf-ref-v">${esc(c.createdByName)||'—'}</div></div></div><div class="pdf-tasınmaz-box">${taraflar}<div class="pdf-row"><div class="pdf-key">Adres</div><div class="pdf-val">${esc(c.adres)||'—'}</div></div>${mali}</div><div class="pdf-footer-bar"><span>Çelebioğlu Gayrimenkul</span><span>${esc(c.id)} — Arşiv Kopyası</span></div>`;
+  document.getElementById('pdfModal').classList.remove('hidden');
+}
+async function deleteContract(id){
+  if(!confirm('Bu sözleşmeyi kalıcı olarak silmek istediğinizden emin misiniz?'))return;
+  const c=contracts.find(x=>x.id===id);
+  if(c)await fbDeleteContract(c);
+  await fbLoadContracts();
+  renderContracts();
+  showToast('Sözleşme silindi.');
+}
+window.viewContract=viewContract;
+window.deleteContract=deleteContract;
+
+// ── RAPORLAR ─────────────────────────────────────────────────────────────────
+function renderReports(){
+  const visible=getVisibleContracts();
+  const s=visible.filter(c=>c.type==='satis').length,k=visible.filter(c=>c.type==='kira').length,a=visible.filter(c=>c.type==='tahliye').length;
+  const total=visible.length||1;
+  document.getElementById('chartTypes').innerHTML=bar('Satış',s,total,'#1a4a2e')+bar('Kira',k,total,'#1a2a4a')+bar('Tahliye',a,total,'#4a1a1a');
+  const months=['Tem','Ağu','Eyl','Eki','Kas','Ara'];
+  const vals=[0,0,0,0,0,visible.length];
+  const mx=Math.max(...vals,1);
+  document.getElementById('chartMonths').innerHTML=months.map((m,i)=>bar(m,vals[i],mx,'#b8860b')).join('');
+  document.getElementById('reportTable').innerHTML=`<tr><td>Toplam Sözleşme</td><td><strong>${visible.length}</strong></td><td></td></tr><tr><td>Tamamlanan</td><td><strong>${visible.filter(c=>c.durum==='tamamlandi').length}</strong></td><td></td></tr><tr><td>Taslak</td><td><strong>${visible.filter(c=>c.durum==='taslak').length}</strong></td><td></td></tr><tr><td>Satış</td><td><strong>${s}</strong></td><td></td></tr><tr><td>Kira</td><td><strong>${k}</strong></td><td></td></tr><tr><td>Tahliye</td><td><strong>${a}</strong></td><td></td></tr>`;
+}
+function bar(lbl,val,max,color){const pct=Math.round((val/max)*100);return `<div class="chart-bar-row"><div class="chart-bar-lbl">${lbl}</div><div class="chart-bar-bg"><div class="chart-bar-fill" style="width:${pct}%;background:${color}"></div></div><div class="chart-bar-val">${val}</div></div>`;}
+
+// ── ADMİN ─────────────────────────────────────────────────────────────────────
+async function renderAdmin(){
+  // Kullanıcı profillerini Firestore'dan yükle (şifre içermez)
+  users = await fbLoadAllUserProfiles();
+  document.getElementById('adminUserCount').textContent=users.length;
+  document.getElementById('adminAdminCount').textContent=users.filter(u=>u.role==='admin').length;
+  document.getElementById('adminContractCount').textContent=contracts.length;
+  document.getElementById('adminUsersTable').innerHTML=users.map(u=>`<tr>
+    <td><div style="display:flex;align-items:center;gap:10px"><div class="staff-avatar">${esc(u.name||'?').split(' ').map(x=>x[0]).join('').slice(0,2)}</div>${esc(u.name)}</div></td>
+    <td style="font-family:'DM Mono',monospace;font-size:12px">${esc(u.email)}</td>
+    <td><span class="badge ${u.role==='admin'?'badge-admin':'badge-taslak'}">${u.role==='admin'?'Yönetici':'Danışman'}</span></td>
+    <td><span class="badge badge-ok">${u.active===false?'Devre Dışı':'Aktif'}</span></td>
+    <td>${u.uid!==currentUser?.uid?`<button class="btn-sm danger" onclick="removeUser('${esc(u.uid)}')">Kaldır</button>`:'<span style="font-size:12px;color:var(--muted)">Sen</span>'}</td>
+  </tr>`).join('');
+  const danismanlar=users.filter(u=>u.role==='user');
+  document.getElementById('adminPerfTable').innerHTML=danismanlar.map(u=>{
+    const mine=contracts.filter(c=>c.createdBy===u.uid);
+    const s=mine.filter(c=>c.type==='satis').length,k=mine.filter(c=>c.type==='kira').length,a=mine.filter(c=>c.type==='tahliye').length;
+    return `<tr><td><div style="display:flex;align-items:center;gap:10px"><div class="staff-avatar">${esc(u.name||'?').split(' ').map(x=>x[0]).join('').slice(0,2)}</div>${esc(u.name)}</div></td><td style="text-align:center"><strong>${mine.length}</strong></td><td style="text-align:center"><span class="badge badge-satis">${s}</span></td><td style="text-align:center"><span class="badge badge-kira">${k}</span></td><td style="text-align:center"><span class="badge badge-aracilik">${a}</span></td></tr>`;
+  }).join('')||'<tr><td colspan="5" class="empty-state">Henüz danışman yok.</td></tr>';
+}
+function openAddUserModal(){document.getElementById('addUserModal').classList.remove('hidden');}
+function closeAddUserModal(){document.getElementById('addUserModal').classList.add('hidden');}
+async function addUser(){
+  const name  = document.getElementById('newUserName').value.trim();
+  const email = document.getElementById('newUserEmail').value.trim();
+  const pass  = document.getElementById('newUserPass').value;
+  const role  = document.getElementById('newUserRole').value;
+  if(!name||!email||!pass){showToast('Tüm alanları doldurun.');return;}
+  if(pass.length < 6){showToast('Şifre en az 6 karakter olmalıdır.');return;}
+
+  const btn = document.querySelector('#addUserModal .btn-primary');
+  btn.disabled=true; btn.textContent='Ekleniyor...';
+
+  try{
+    // İkincil Auth instance ile kullanıcı oluştur — mevcut admin oturumu KAPANMAZ
+    const cred = await createUserWithEmailAndPassword(secondaryAuth, email, pass);
+
+    // İkincil oturumu hemen kapat
+    await signOut(secondaryAuth);
+
+    // Firestore'a profil kaydet — şifre YOK
+    const profile = { name, email, role, active: true, createdAt: new Date().toISOString() };
+    await fbSaveUserProfile(cred.user.uid, profile);
+
+    users.push({...profile, uid: cred.user.uid});
+    closeAddUserModal();
+    await renderAdmin();
+    showToast('✓ ' + name + ' eklendi!');
+    ['newUserName','newUserEmail','newUserPass'].forEach(id=>{document.getElementById(id).value='';});
+  } catch(e){
+    console.error('Kullanıcı ekleme hatası:',e);
+    if(e.code==='auth/email-already-in-use'){
+      showToast('⚠️ Bu e-posta zaten kayıtlı.');
+    } else if(e.code==='auth/weak-password'){
+      showToast('⚠️ Şifre en az 6 karakter olmalıdır.');
+    } else {
+      showToast('⚠️ Kullanıcı eklenemedi: '+e.message);
+    }
+  } finally {
+    btn.disabled=false; btn.textContent='Ekle';
+  }
+}
+async function removeUser(uid){
+  if(!uid||uid===currentUser?.uid){showToast('Kendi hesabınızı silemezsiniz.');return;}
+  if(!confirm('Bu kullanıcıyı kalıcı olarak silmek istediğinizden emin misiniz?'))return;
+  try{
+    // Firestore'dan tamamen sil
+    await deleteDoc(doc(db,'users',uid));
+    users = users.filter(u=>u.uid!==uid);
+    await renderAdmin();
+    showToast('✓ Kullanıcı silindi.');
+    // Not: Firebase Authentication kaydı Firebase Console'dan manuel silinmelidir.
+  } catch(e){
+    showToast('⚠️ İşlem başarısız: '+e.message);
+  }
+}
+window.openAddUserModal=openAddUserModal;
+window.closeAddUserModal=closeAddUserModal;
+window.addUser=addUser;
+window.removeUser=removeUser;
+
+// ── YEDEK / EXPORT ───────────────────────────────────────────────────────────
+function getExportRows(){
+  const turler={satis:'Satış',kira:'Kira',tahliye:'Tahliye'};
+  const durumlar={tamamlandi:'Tamamlandı',taslak:'Taslak'};
+  return contracts.map(c=>({
+    'Sözleşme No': c.id||'',
+    'Tür': turler[c.type]||c.type||'',
+    'Tarih': c.date||'',
+    'Durum': durumlar[c.durum]||c.durum||'',
+    'Satıcı / Kiraya Veren': c.satici||c.kiralayan||'',
+    'Alıcı / Kiracı': c.alici||c.kiraci||'',
+    'Adres': c.adres||'',
+    'Bedel (₺)': c.fiyat||c.kira||'',
+    'Danışman': c.createdByName||''
+  }));
+}
+
+function exportExcel(){
+  if(!contracts.length){showToast('⚠️ Henüz sözleşme yok.');return;}
+  const rows=getExportRows();
+  const ws=XLSX.utils.json_to_sheet(rows);
+  ws['!cols']=[{wch:18},{wch:10},{wch:12},{wch:12},{wch:24},{wch:24},{wch:32},{wch:14},{wch:18}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Sözleşmeler');
+  const tarih=new Date().toLocaleDateString('tr-TR').replace(/\./g,'-');
+  XLSX.writeFile(wb,`celebigayrimenkul_yedek_${tarih}.xlsx`);
+  showToast('✓ Excel dosyası indirildi.');
+}
+
+async function exportWord(){
+  if(!contracts.length){showToast('⚠️ Henüz sözleşme yok.');return;}
+  showToast('⏳ Word dosyası hazırlanıyor...');
+  try{
+    const {Document,Packer,Paragraph,Table,TableRow,TableCell,TextRun,WidthType,AlignmentType,BorderStyle,ShadingType}=window.docx;
+    const rows=getExportRows();
+    const headers=Object.keys(rows[0]);
+    const border={style:BorderStyle.SINGLE,size:1,color:'CCCCCC'};
+    const borders={top:border,bottom:border,left:border,right:border};
+    const colW=Math.floor(9360/headers.length);
+
+    const headerRow=new TableRow({children:headers.map(h=>new TableCell({
+      borders,width:{size:colW,type:WidthType.DXA},
+      shading:{fill:'1A1A2E',type:ShadingType.CLEAR},
+      margins:{top:80,bottom:80,left:100,right:100},
+      children:[new Paragraph({children:[new TextRun({text:h,bold:true,color:'FFFFFF',size:18,font:'Arial'})]})]
+    }))});
+
+    const dataRows=rows.map(r=>new TableRow({children:Object.values(r).map(v=>new TableCell({
+      borders,width:{size:colW,type:WidthType.DXA},
+      margins:{top:60,bottom:60,left:100,right:100},
+      children:[new Paragraph({children:[new TextRun({text:String(v),size:16,font:'Arial'})]})]
+    }))}));
+
+    const tarih=new Date().toLocaleDateString('tr-TR');
+    const doc=new Document({sections:[{
+      properties:{page:{size:{width:21000,height:29700},margin:{top:1000,right:800,bottom:1000,left:800}}},
+      children:[
+        new Paragraph({children:[new TextRun({text:'Çelebioğlu Gayrimenkul — Sözleşme Arşivi',bold:true,size:28,font:'Arial',color:'1A1A2E'})],spacing:{after:200}}),
+        new Paragraph({children:[new TextRun({text:`Oluşturma Tarihi: ${tarih} | Toplam: ${contracts.length} sözleşme`,size:18,font:'Arial',color:'6B7A99'})],spacing:{after:400}}),
+        new Table({width:{size:9360,type:WidthType.DXA},columnWidths:headers.map(()=>colW),rows:[headerRow,...dataRows]})
+      ]
+    }]});
+
+    const buf=await Packer.toBlob(doc);
+    const url=URL.createObjectURL(buf);
+    const a=document.createElement('a');
+    const t2=new Date().toLocaleDateString('tr-TR').replace(/\./g,'-');
+    a.href=url;a.download=`celebigayrimenkul_yedek_${t2}.docx`;a.click();
+    URL.revokeObjectURL(url);
+    showToast('✓ Word dosyası indirildi.');
+  }catch(e){console.error(e);showToast('⚠️ Word oluşturulamadı: '+e.message);}
+}
+
+function exportPDF(){
+  if(!contracts.length){showToast('⚠️ Henüz sözleşme yok.');return;}
+  try{
+    const {jsPDF}=window.jspdf;
+    const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+    const rows=getExportRows();
+    const headers=Object.keys(rows[0]);
+    const tarih=new Date().toLocaleDateString('tr-TR');
+
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(14);
+    doc.setTextColor(26,26,46);
+    doc.text('Celebioglu Gayrimenkul - Sozlesme Arsivi',14,15);
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(9);
+    doc.setTextColor(107,122,153);
+    doc.text(`Tarih: ${tarih} | Toplam: ${contracts.length} sozlesme`,14,22);
+
+    doc.autoTable({
+      startY:28,
+      head:[headers],
+      body:rows.map(r=>Object.values(r).map(v=>String(v))),
+      styles:{fontSize:7,font:'helvetica',cellPadding:2,overflow:'linebreak'},
+      headStyles:{fillColor:[26,26,46],textColor:255,fontStyle:'bold'},
+      alternateRowStyles:{fillColor:[242,244,248]},
+      margin:{left:14,right:14},
+      tableWidth:'auto'
+    });
+
+    const t2=new Date().toLocaleDateString('tr-TR').replace(/\./g,'-');
+    doc.save(`celebigayrimenkul_yedek_${t2}.pdf`);
+    showToast('✓ PDF dosyası indirildi.');
+  }catch(e){console.error(e);showToast('⚠️ PDF oluşturulamadı: '+e.message);}
+}
+
+window.exportExcel=exportExcel;
+window.exportWord=exportWord;
+window.exportPDF=exportPDF;
+
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
+</script>
+</body>
+</html>
