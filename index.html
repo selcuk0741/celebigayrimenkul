@@ -552,6 +552,7 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword, browserLocalPersistence, setPersistence } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { initializeApp as initializeSecondaryApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getFirestore as getSecondaryFirestore } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyBdMnwQB9UD4-0xzx_RtxrQjePu7n3XeeM",
@@ -569,6 +570,7 @@ try { await setPersistence(auth, browserLocalPersistence); } catch(e){ console.w
 
 const secondaryApp = initializeSecondaryApp(firebaseConfig, 'secondary');
 const secondaryAuth = getAuth(secondaryApp);
+const secondaryDb = getSecondaryFirestore(secondaryApp); // İkincil Firestore — secondaryAuth token'ıyla yazar
 
 // ── GÜVENLİ XSS KORUMASI ─────────────────────────────────────────────────────
 function esc(str){
@@ -1386,13 +1388,16 @@ async function addUser(){
   btn.disabled=true; btn.textContent='Ekleniyor...';
 
   try{
+    // 1. İkincil auth ile yeni kullanıcıyı oluştur
     const cred = await createUserWithEmailAndPassword(secondaryAuth, email, pass);
     const newUid = cred.user.uid;
 
+    // 2. secondaryDb kullan — secondaryAuth token'ıyla yazar, isOwner(uid) geçer
     const profile = { name, email, role, active: true, createdAt: new Date().toISOString() };
-    await fbSaveUserProfile(newUid, profile);
+    await setDoc(doc(secondaryDb, 'users', newUid), profile);
 
-    try { await signOut(secondaryAuth); } catch(e2) { /* önemli değil */ }
+    // 3. İkincil oturumu kapat
+    try { await signOut(secondaryAuth); } catch(e2) {}
 
     users.push({...profile, uid: newUid});
     closeAddUserModal();
@@ -1403,8 +1408,7 @@ async function addUser(){
   } catch(e){
     console.error('Kullanıcı ekleme hatası:', e.code, e.message);
     if(e.code==='auth/email-already-in-use'){
-      // ✅ DÜZELTME: Tek tırnak yerine backtick kullanıldı
-      showToast(`⚠️ Bu e-posta Auth'ta zaten kayıtlı. Firebase Console'dan UID'yi alıp Firestore'a ekleyin.`);
+      showToast(`⚠️ Bu e-posta zaten kayıtlı. "Profili Kurtarmayı Dene" linkine tıklayın.`);
     } else if(e.code==='auth/weak-password'){
       showToast(`⚠️ Şifre en az 6 karakter olmalıdır.`);
     } else {
@@ -1452,7 +1456,8 @@ async function fixMissingProfile(e){
     }
 
     const profile = { name, email, role, active: true, createdAt: new Date().toISOString() };
-    await fbSaveUserProfile(uid, profile);
+    // secondaryDb ile yaz — secondaryAuth token'ı geçerli olduğu için isOwner(uid) kuralı geçer
+    await setDoc(doc(secondaryDb, 'users', uid), profile);
     try { await signOut(secondaryAuth); } catch(e4){}
 
     users.push({...profile, uid});
