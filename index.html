@@ -373,7 +373,6 @@ tr:hover td{background:var(--bg2)}
       <div class="fg"><label>Şifre</label><input type="password" id="loginPass" placeholder="••••••••" autocomplete="off"></div>
       <button class="login-btn" onclick="doLogin()">Giriş Yap</button>
       <div class="login-err" id="loginErr">E-posta veya şifre hatalı.</div>
-
     </div>
   </div>
 </div>
@@ -545,7 +544,7 @@ tr:hover td{background:var(--bg2)}
 <script type="module">
 // ── FİREBASE ──────────────────────────────────────────────────────────────────
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, where, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, browserLocalPersistence, setPersistence } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 
 const firebaseConfig = {
@@ -560,10 +559,8 @@ const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
 const auth = getAuth(fbApp);
 
-// Oturumu LOCAL olarak sakla — tarayıcı kapansa bile devam eder, refresh'te bozulmaz
 await setPersistence(auth, browserLocalPersistence);
 
-// REST API ile kullanıcı oluşturma — admin oturumuna hiç dokunmaz
 async function createAuthUserViaREST(email, password) {
   const url = `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${firebaseConfig.apiKey}`;
   const resp = await fetch(url, {
@@ -581,7 +578,7 @@ async function createAuthUserViaREST(email, password) {
     };
     throw { code: codeMap[msg] || 'auth/unknown', message: msg };
   }
-  return data.localId; // uid döner
+  return data.localId;
 }
 
 // ── GÜVENLİ XSS KORUMASI ─────────────────────────────────────────────────────
@@ -600,24 +597,32 @@ async function fbSaveContract(c){
   try{ await addDoc(collection(db,'contracts'), c); }
   catch(e){ console.error('Kayıt hatası:',e); showToast('⚠️ Kayıt hatası: '+e.message); }
 }
+
+// ── FIX 1: Kullanıcılar sadece kendi sözleşmelerini görür ─────────────────────
 async function fbLoadContracts(){
   try{
-    const q = query(collection(db,'contracts'), orderBy('date','desc'));
+    let q;
+    if(currentUser && currentUser.role !== 'admin'){
+      // Danışman: sadece kendi oluşturduğu sözleşmeleri getir
+      q = query(collection(db,'contracts'), where('createdBy','==',currentUser.uid), orderBy('date','desc'));
+    } else {
+      // Admin: tüm sözleşmeleri getir
+      q = query(collection(db,'contracts'), orderBy('date','desc'));
+    }
     const snap = await getDocs(q);
     contracts = snap.docs.map(d=>({...d.data(), _docId:d.id}));
   } catch(e){ console.error('Yükleme hatası:',e); }
 }
+
 async function fbDeleteContract(c){
   try{
     if(c._docId) await deleteDoc(doc(db,'contracts',c._docId));
   } catch(e){ console.error('Silme hatası:',e); }
 }
 
-// Kullanıcı profili Firestore'da 'users' koleksiyonunda tutulur
-// Şifreler Firebase Auth'ta — Firestore'da şifre yok
 async function fbSaveUserProfile(uid, profileData){
   const {pass, ...safeData} = profileData;
-  await setDoc(doc(db,'users',uid), safeData); // hata fırlatır, caller yakalar
+  await setDoc(doc(db,'users',uid), safeData);
 }
 async function fbLoadUserProfile(uid){
   try{
@@ -645,11 +650,10 @@ async function fbDeleteUserProfile(uid){
 let users = [];
 let contracts = [];
 let currentUser = null, currentFilter = 'hepsi', currentSearchQ = '';
-// ── BAŞLANGIÇ: Tüm sayfaları gizle, loading göster ───────────────────────────
+
 document.getElementById('loginPage').classList.add('hidden');
 document.getElementById('appPage').classList.add('hidden');
 
-// ── AUTH STATE OBSERVER ───────────────────────────────────────────────────────
 let _authInitialized = false;
 
 onAuthStateChanged(auth, async (firebaseUser) => {
@@ -669,7 +673,6 @@ onAuthStateChanged(auth, async (firebaseUser) => {
     }
     return;
   }
-  // Sonraki tetiklemeler: sadece gerçek logout'ta login göster
   if(!firebaseUser && currentUser === null){
     showLogin();
   }
@@ -728,7 +731,7 @@ async function doLogin(){
     }
 
     currentUser = { ...profile, uid: cred.user.uid, id: cred.user.uid };
-    _authInitialized = true; // onAuthStateChanged tekrar müdahale etmesin
+    _authInitialized = true;
     showApp();
 
   } catch(e){
@@ -751,7 +754,7 @@ async function doLogout(){
   currentUser = null;
   contracts = [];
   users = [];
-  _authInitialized = false; // Sonraki onAuthStateChanged login sayfasını göstersin
+  _authInitialized = false;
   try{ await signOut(auth); } catch(e){ console.error('Logout hatası:',e); }
 }
 document.getElementById('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
@@ -778,8 +781,9 @@ async function showPage(name){
 window.showPage=showPage;
 
 function getVisibleContracts(){
-  if(currentUser.role==='admin')return contracts;
-  return contracts.filter(c=>c.createdBy===currentUser.uid||c.assignedTo===currentUser.uid);
+  // fbLoadContracts zaten role'a göre filter yapıyor
+  // Bu fonksiyon artık sadece local filter için kullanılıyor
+  return contracts;
 }
 
 function renderDashboard(){
@@ -811,7 +815,6 @@ function d(val){return val||'……………'}
 
 function buildForm(type){
   const today=new Date().toISOString().slice(0,10);
-  const rp=()=>`oninput="renderPreview('${type}')"`;
 
   if(type==='tahliye'){return `
     <div class="form-section"><div class="fs-head"><span class="fs-icon">🚪</span><h3>Kiracı Bilgileri</h3></div><div class="fs-body">
@@ -983,11 +986,57 @@ async function saveDraft(){
   await _saveContract(type,docNo,'taslak');
   showToast('✓ Taslak buluta kaydedildi!');
 }
+
+// ── FIX 3: Tüm form alanlarını Firestore'a kaydet ─────────────────────────────
 async function _saveContract(type,docNo,durum){
-  const c={id:docNo,type,date:new Date().toISOString().slice(0,10),durum,createdBy:currentUser.uid,assignedTo:currentUser.uid,createdByName:currentUser.name};
-  if(type==='satis'){c.satici=gv('f_satici');c.alici=gv('f_alici');c.adres=gv('f_adres')||[gv('f_mahalle'),gv('f_ilce'),gv('f_il')].filter(Boolean).join(', ');c.fiyat=gv('f_fiyat');}
-  else if(type==='kira'){c.kiralayan=gv('f_kiralayan');c.kiraci=gv('f_kiraci');c.adres=gv('f_adres');c.kira=gv('f_kira');}
-  else{c.kiralayan=gv('f_kiralayan');c.kiraci=gv('f_kiraci');c.adres=gv('f_adres');}
+  // FIX: Tarih + Saat birlikte kaydet
+  const _now=new Date();
+  const _pad=n=>String(n).padStart(2,'0');
+  const _dateStr=_now.getFullYear()+'-'+_pad(_now.getMonth()+1)+'-'+_pad(_now.getDate());
+  const _timeStr=_pad(_now.getHours())+':'+_pad(_now.getMinutes());
+
+  const c={
+    id:docNo,type,
+    date:_dateStr,
+    time:_timeStr,
+    datetime:_dateStr+' '+_timeStr,
+    durum,
+    createdBy:currentUser.uid,
+    assignedTo:currentUser.uid,
+    createdByName:currentUser.name
+  };
+
+  if(type==='satis'){
+    // Taraflar
+    c.satici=gv('f_satici');c.satici_tc=gv('f_satici_tc');c.satici_tel=gv('f_satici_tel');c.satici_email=gv('f_satici_email');c.satici_adres=gv('f_satici_adres');
+    c.alici=gv('f_alici');c.alici_tc=gv('f_alici_tc');c.alici_tel=gv('f_alici_tel');c.alici_email=gv('f_alici_email');c.alici_adres=gv('f_alici_adres');
+    c.araci_ad=gv('f_araci_ad');c.araci_tc=gv('f_araci_tc');c.araci_tel=gv('f_araci_tel');c.araci_lisans=gv('f_araci_lisans');c.araci_adres=gv('f_araci_adres');
+    // Taşınmaz
+    c.tip=gv('f_tip');c.kullanim=gv('f_kullanim');c.il=gv('f_il');c.ilce=gv('f_ilce');c.mahalle=gv('f_mahalle');
+    c.cadde=gv('f_cadde');c.sokak=gv('f_sokak');c.kapi_no=gv('f_kapi_no');
+    c.ada=gv('f_ada');c.parsel=gv('f_parsel');c.bb_no=gv('f_bb_no');c.m2=gv('f_m2');c.ekb=gv('f_ekb');c.hasar=gv('f_hasar');c.devir_masraf=gv('f_devir_masraf');
+    // Finansal
+    c.fiyat=gv('f_fiyat');c.kapora=gv('f_kapora');c.nakit=gv('f_nakit');c.kredi=gv('f_kredi');c.kredi_banka=gv('f_kredi_banka');c.kalan=gv('f_kalan');
+    c.komisyon=gv('f_komisyon');c.tapu_tarihi=gv('f_tapu_tarihi');c.sozlesme_yeri=gv('f_sozlesme_yeri');c.notlar=gv('f_notlar');
+    c.adres=gv('f_adres')||[gv('f_mahalle'),gv('f_ilce'),gv('f_il')].filter(Boolean).join(', ');
+  }
+  else if(type==='kira'){
+    c.kiralayan=gv('f_kiralayan');c.kiralayan_tc=gv('f_kiralayan_tc');c.kiralayan_adres=gv('f_kiralayan_adres');c.kiralayan_tel=gv('f_kiralayan_tel');c.kiralayan_iban=gv('f_kiralayan_iban');c.banka_adi=gv('f_banka_adi');
+    c.kiraci=gv('f_kiraci');c.kiraci_tc=gv('f_kiraci_tc');c.kiraci_adres=gv('f_kiraci_adres');c.kiraci_tel=gv('f_kiraci_tel');
+    c.kefil=gv('f_kefil');c.kefil_tc=gv('f_kefil_tc');c.kefil_adres=gv('f_kefil_adres');c.kefil_tel=gv('f_kefil_tel');
+    c.tip=gv('f_tip');c.kira=gv('f_kira');c.depozito=gv('f_depozito');c.kira_bas=gv('f_kira_bas');c.kira_sure=gv('f_kira_sure');
+    c.artis=gv('f_artis');c.odeme_gun=gv('f_odeme_gun');c.demirbas=gv('f_demirbas');
+    c.araci_ad=gv('f_araci_ad');c.araci_tc=gv('f_araci_tc');
+    c.tarih=gv('f_tarih');c.ilce=gv('f_ilce');c.adres=gv('f_adres');
+  }
+  else{
+    c.kiralayan=gv('f_kiralayan');c.kiralayan_tc=gv('f_kiralayan_tc');
+    c.kiraci=gv('f_kiraci');c.kiraci_tc=gv('f_kiraci_tc');
+    c.il=gv('f_il');c.ilce=gv('f_ilce');c.mahalle=gv('f_mahalle');c.ada=gv('f_ada');c.parsel=gv('f_parsel');c.bb_no=gv('f_bb_no');
+    c.tarih=gv('f_tarih');c.kira_sozlesme_tarihi=gv('f_kira_sozlesme_tarihi');c.tahliye_tarihi=gv('f_tahliye_tarihi');
+    c.adres=gv('f_adres');
+  }
+
   showToast('⏳ Kaydediliyor...');
   await fbSaveContract(c);
   await fbLoadContracts();
@@ -1261,7 +1310,9 @@ function renderContractTable(list,showDelete=true){
     const badge=c.type==='satis'?'badge-satis':c.type==='kira'?'badge-kira':'badge-aracilik';
     const danismanCell=isAdmin?`<td><span style="font-size:12px">${esc(c.createdByName)||'—'}</span></td>`:'';
     const safeId=esc(c.id);
-    return `<tr><td><span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)">${safeId}</span></td><td><span class="badge ${badge}">${tn[c.type]}</span></td><td>${taraf}</td><td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.adres)||'—'}</td><td>${esc(c.date)||'—'}</td><td>${db[c.durum]||''}</td>${danismanCell}<td style="display:flex;gap:6px"><button class="btn-sm" onclick="viewContract('${safeId}')">Görüntüle</button>${showDelete&&isAdmin?`<button class="btn-sm danger" onclick="deleteContract('${safeId}')">Sil</button>`:''}</td></tr>`;
+    // FIX: Tarih + saat göster
+    const tarihCell=c.date?(c.date+(c.time?` <span style="font-size:10px;color:var(--muted)">${esc(c.time)}</span>`:'')):''||'—';
+    return `<tr><td><span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)">${safeId}</span></td><td><span class="badge ${badge}">${tn[c.type]}</span></td><td>${taraf}</td><td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.adres)||'—'}</td><td>${tarihCell}</td><td>${db[c.durum]||''}</td>${danismanCell}<td style="display:flex;gap:6px"><button class="btn-sm" onclick="viewContract('${safeId}')">Görüntüle</button>${showDelete&&isAdmin?`<button class="btn-sm danger" onclick="deleteContract('${safeId}')">Sil</button>`:''}</td></tr>`;
   }).join('')+'</tbody></table>';
 }
 
@@ -1280,19 +1331,67 @@ function searchContracts(q){currentSearchQ=q;renderContracts();}
 window.filterContracts=filterContracts;
 window.searchContracts=searchContracts;
 
+// ── FIX 2: viewContract — Tam PDF göster (kayıtlı verilerden) ─────────────────
 function viewContract(id){
   const c=contracts.find(x=>x.id===id);
   if(!c)return;
-  const today=new Date().toLocaleDateString('tr-TR',{day:'2-digit',month:'long',year:'numeric'});
-  const titles={satis:'GAYRİMENKUL SATIŞINA CAYMA AKÇELİ ARACILIK SÖZLEŞMESİ',kira:'KONUT KİRA SÖZLEŞMESİ',tahliye:'TAHLİYE TAAHHÜDÜ'};
-  const icons={satis:'🏡',kira:'🔑',tahliye:'🚪'};
-  let taraflar='',mali='';
-  if(c.type==='satis'){taraflar=`<div class="pdf-row"><div class="pdf-key">Satıcı</div><div class="pdf-val">${esc(c.satici)||'—'}</div></div><div class="pdf-row"><div class="pdf-key">Alıcı</div><div class="pdf-val">${esc(c.alici)||'—'}</div></div>`;mali=`<div class="pdf-row"><div class="pdf-key">Satış Bedeli</div><div class="pdf-val">${c.fiyat?fmt(c.fiyat)+' ₺':'—'}</div></div>`;}
-  else if(c.type==='kira'){taraflar=`<div class="pdf-row"><div class="pdf-key">Kiraya Veren</div><div class="pdf-val">${esc(c.kiralayan)||'—'}</div></div><div class="pdf-row"><div class="pdf-key">Kiracı</div><div class="pdf-val">${esc(c.kiraci)||'—'}</div></div>`;mali=`<div class="pdf-row"><div class="pdf-key">Aylık Kira</div><div class="pdf-val">${c.kira?fmt(c.kira)+' ₺':'—'}</div></div>`;}
-  else{taraflar=`<div class="pdf-row"><div class="pdf-key">Kiraya Veren</div><div class="pdf-val">${esc(c.kiralayan)||'—'}</div></div><div class="pdf-row"><div class="pdf-key">Kiracı</div><div class="pdf-val">${esc(c.kiraci)||'—'}</div></div>`;mali='';}
-  document.getElementById('pdfContent').innerHTML=`${antet(esc(c.id))}<div class="pdf-title-block"><h2>${titles[c.type]}</h2><div class="pdf-type-bar">${icons[c.type]} ${c.type.toUpperCase()}</div></div><div class="pdf-ref-box"><div><div class="pdf-ref-k">No</div><div class="pdf-ref-v">${esc(c.id)}</div></div><div><div class="pdf-ref-k">Tarih</div><div class="pdf-ref-v">${esc(c.date)||'—'}</div></div><div><div class="pdf-ref-k">Danışman</div><div class="pdf-ref-v">${esc(c.createdByName)||'—'}</div></div></div><div class="pdf-tasınmaz-box">${taraflar}<div class="pdf-row"><div class="pdf-key">Adres</div><div class="pdf-val">${esc(c.adres)||'—'}</div></div>${mali}</div><div class="pdf-footer-bar"><span>Çelebioğlu Gayrimenkul</span><span>${esc(c.id)} — Arşiv Kopyası</span></div>`;
+  // Kayıtlı verilerden geçici hidden input'lar oluştur, buildPDF çağır, sonra temizle
+  const fieldMap = {
+    f_araci_ad: c.araci_ad||c.createdByName||'',
+    f_araci_tc: c.araci_tc||'',
+    f_araci_tel: c.araci_tel||'',
+    f_araci_lisans: c.araci_lisans||'4105800',
+    f_araci_adres: c.araci_adres||'Gaziler Mah. Gaziler Cad. 1721 Sk. No: 1/B Gebze/KOCAELİ',
+    // Satış
+    f_satici: c.satici||'', f_satici_tc: c.satici_tc||'',
+    f_satici_tel: c.satici_tel||'', f_satici_email: c.satici_email||'', f_satici_adres: c.satici_adres||'',
+    f_alici: c.alici||'', f_alici_tc: c.alici_tc||'',
+    f_alici_tel: c.alici_tel||'', f_alici_email: c.alici_email||'', f_alici_adres: c.alici_adres||'',
+    f_tip: c.tip||'', f_kullanim: c.kullanim||'',
+    f_il: c.il||'', f_ilce: c.ilce||'', f_mahalle: c.mahalle||'',
+    f_cadde: c.cadde||'', f_sokak: c.sokak||'', f_kapi_no: c.kapi_no||'',
+    f_ada: c.ada||'', f_parsel: c.parsel||'', f_bb_no: c.bb_no||'',
+    f_m2: c.m2||'', f_ekb: c.ekb||'', f_hasar: c.hasar||'', f_devir_masraf: c.devir_masraf||'',
+    f_fiyat: c.fiyat||'', f_kapora: c.kapora||'', f_nakit: c.nakit||'',
+    f_kredi: c.kredi||'', f_kredi_banka: c.kredi_banka||'', f_kalan: c.kalan||'',
+    f_komisyon: c.komisyon||'', f_tapu_tarihi: c.tapu_tarihi||'',
+    f_sozlesme_yeri: c.sozlesme_yeri||'', f_notlar: c.notlar||'',
+    f_adres: c.adres||'',
+    // Kira
+    f_kiralayan: c.kiralayan||'', f_kiralayan_tc: c.kiralayan_tc||'',
+    f_kiralayan_adres: c.kiralayan_adres||'', f_kiralayan_tel: c.kiralayan_tel||'',
+    f_kiralayan_iban: c.kiralayan_iban||'', f_banka_adi: c.banka_adi||'',
+    f_kiraci: c.kiraci||'', f_kiraci_tc: c.kiraci_tc||'',
+    f_kiraci_adres: c.kiraci_adres||'', f_kiraci_tel: c.kiraci_tel||'',
+    f_kefil: c.kefil||'', f_kefil_tc: c.kefil_tc||'',
+    f_kefil_adres: c.kefil_adres||'', f_kefil_tel: c.kefil_tel||'',
+    f_kira: c.kira||'', f_depozito: c.depozito||'',
+    f_kira_bas: c.kira_bas||'', f_kira_sure: c.kira_sure||'1 yıl',
+    f_artis: c.artis||'', f_odeme_gun: c.odeme_gun||'17',
+    f_demirbas: c.demirbas||'',
+    f_tarih: c.tarih||c.date||'',
+    // Tahliye
+    f_kira_sozlesme_tarihi: c.kira_sozlesme_tarihi||'',
+    f_tahliye_tarihi: c.tahliye_tarihi||'',
+  };
+  // Geçici hidden container oluştur
+  const container = document.createElement('div');
+  container.id = '_tmpFields';
+  container.style.display = 'none';
+  Object.entries(fieldMap).forEach(([fid, val])=>{
+    const el = document.createElement('input');
+    el.id = fid; el.value = val;
+    container.appendChild(el);
+  });
+  document.body.appendChild(container);
+  // Tam PDF'yi oluştur
+  const pdfHtml = buildPDF(c.type, c.id);
+  document.getElementById('pdfContent').innerHTML = pdfHtml;
+  // Geçici container'ı temizle
+  document.body.removeChild(container);
   document.getElementById('pdfModal').classList.remove('hidden');
 }
+
 async function deleteContract(id){
   if(!confirm('Bu sözleşmeyi kalıcı olarak silmek istediğinizden emin misiniz?'))return;
   const c=contracts.find(x=>x.id===id);
@@ -1310,11 +1409,33 @@ function renderReports(){
   const s=visible.filter(c=>c.type==='satis').length,k=visible.filter(c=>c.type==='kira').length,a=visible.filter(c=>c.type==='tahliye').length;
   const total=visible.length||1;
   document.getElementById('chartTypes').innerHTML=bar('Satış',s,total,'#1a4a2e')+bar('Kira',k,total,'#1a2a4a')+bar('Tahliye',a,total,'#4a1a1a');
-  const months=['Tem','Ağu','Eyl','Eki','Kas','Ara'];
-  const vals=[0,0,0,0,0,visible.length];
-  const mx=Math.max(...vals,1);
-  document.getElementById('chartMonths').innerHTML=months.map((m,i)=>bar(m,vals[i],mx,'#b8860b')).join('');
-  document.getElementById('reportTable').innerHTML=`<tr><td>Toplam Sözleşme</td><td><strong>${visible.length}</strong></td><td></td></tr><tr><td>Tamamlanan</td><td><strong>${visible.filter(c=>c.durum==='tamamlandi').length}</strong></td><td></td></tr><tr><td>Taslak</td><td><strong>${visible.filter(c=>c.durum==='taslak').length}</strong></td><td></td></tr><tr><td>Satış</td><td><strong>${s}</strong></td><td></td></tr><tr><td>Kira</td><td><strong>${k}</strong></td><td></td></tr><tr><td>Tahliye</td><td><strong>${a}</strong></td><td></td></tr>`;
+
+  // FIX: Son 6 ayı gerçek veriden hesapla
+  const now = new Date();
+  const monthLabels = [];
+  const monthCounts = [];
+  for(let i=5;i>=0;i--){
+    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+    const ym = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    const label = d.toLocaleDateString('tr-TR',{month:'short'});
+    const count = visible.filter(c=>c.date&&c.date.startsWith(ym)).length;
+    monthLabels.push(label);
+    monthCounts.push(count);
+  }
+  const mx=Math.max(...monthCounts,1);
+  document.getElementById('chartMonths').innerHTML=monthLabels.map((m,i)=>bar(m,monthCounts[i],mx,'#b8860b')).join('');
+
+  // Son oluşturulan sözleşme tarihi
+  const lastDate = visible.length>0 ? (visible[0].datetime||visible[0].date||'—') : '—';
+
+  document.getElementById('reportTable').innerHTML=`
+    <tr><td>Toplam Sözleşme</td><td><strong>${visible.length}</strong></td><td>Erişilebilir tüm sözleşmeler</td></tr>
+    <tr><td>Tamamlanan</td><td><strong>${visible.filter(c=>c.durum==='tamamlandi').length}</strong></td><td>Oluşturulmuş sözleşmeler</td></tr>
+    <tr><td>Taslak</td><td><strong>${visible.filter(c=>c.durum==='taslak').length}</strong></td><td>Kaydedilmiş taslaklar</td></tr>
+    <tr><td>Satış</td><td><strong>${s}</strong></td><td>Satış sözleşmeleri</td></tr>
+    <tr><td>Kira</td><td><strong>${k}</strong></td><td>Kira sözleşmeleri</td></tr>
+    <tr><td>Tahliye</td><td><strong>${a}</strong></td><td>Tahliye taahhütleri</td></tr>
+    <tr><td>Son Sözleşme</td><td><strong style="font-size:12px">${esc(lastDate)}</strong></td><td>En son oluşturma tarihi ve saati</td></tr>`;
 }
 function bar(lbl,val,max,color){const pct=Math.round((val/max)*100);return `<div class="chart-bar-row"><div class="chart-bar-lbl">${lbl}</div><div class="chart-bar-bg"><div class="chart-bar-fill" style="width:${pct}%;background:${color}"></div></div><div class="chart-bar-val">${val}</div></div>`;}
 
@@ -1353,40 +1474,22 @@ async function addUser(){
 
   let uid = null;
   try{
-    // 1. Firebase Auth REST API ile kullanıcı oluştur — admin oturumuna hiç dokunmaz
     uid = await createAuthUserViaREST(email, pass);
-
-    // 2. Firestore'a profil kaydet
-    const profile = {
-      name,
-      email,
-      role,
-      active: true,
-      createdAt: new Date().toISOString()
-    };
+    const profile = { name, email, role, active: true, createdAt: new Date().toISOString() };
     await setDoc(doc(db, 'users', uid), profile);
-
-    // 3. UI güncelle
     users.push({...profile, uid});
     closeAddUserModal();
     ['newUserName','newUserEmail','newUserPass'].forEach(id=>{document.getElementById(id).value='';});
     document.getElementById('newUserRole').value='user';
     await renderAdmin();
     showToast('✓ ' + name + ' başarıyla eklendi!');
-
   } catch(e){
     console.error('Kullanıcı ekleme hatası:', e);
-    if(e.code==='auth/email-already-in-use'){
-      showToast('⚠️ Bu e-posta adresi zaten kayıtlı.');
-    } else if(e.code==='auth/weak-password'){
-      showToast('⚠️ Şifre en az 6 karakter olmalıdır.');
-    } else if(e.code==='auth/invalid-email'){
-      showToast('⚠️ Geçersiz e-posta adresi.');
-    } else if(e.message && e.message.includes('permission')){
-      showToast('⚠️ Firestore yetki hatası. Güvenlik kurallarını kontrol edin.');
-    } else {
-      showToast('⚠️ Kullanıcı eklenemedi: ' + (e.message || e.code || 'Bilinmeyen hata'));
-    }
+    if(e.code==='auth/email-already-in-use'){showToast('⚠️ Bu e-posta adresi zaten kayıtlı.');}
+    else if(e.code==='auth/weak-password'){showToast('⚠️ Şifre en az 6 karakter olmalıdır.');}
+    else if(e.code==='auth/invalid-email'){showToast('⚠️ Geçersiz e-posta adresi.');}
+    else if(e.message && e.message.includes('permission')){showToast('⚠️ Firestore yetki hatası. Güvenlik kurallarını kontrol edin.');}
+    else{showToast('⚠️ Kullanıcı eklenemedi: ' + (e.message || e.code || 'Bilinmeyen hata'));}
   } finally {
     btn.disabled=false; btn.textContent='Ekle';
   }
