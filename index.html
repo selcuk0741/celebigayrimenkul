@@ -369,8 +369,8 @@ tr:hover td{background:var(--bg2)}
       </div>
       <h3>Giriş Yapın</h3>
       <p>Hesabınıza erişmek için bilgilerinizi girin</p>
-      <div class="fg"><label>E-posta</label><input type="text" id="loginEmail" placeholder="ornek@celebigayrimenkul.com" autocomplete="off"></div>
-      <div class="fg"><label>Şifre</label><input type="password" id="loginPass" placeholder="••••••••" autocomplete="off"></div>
+      <div class="fg"><label>E-posta</label><input type="email" id="loginEmail" placeholder="ornek@celebigayrimenkul.com" autocomplete="username"></div>
+      <div class="fg"><label>Şifre</label><input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password"></div>
       <button class="login-btn" onclick="doLogin()">Giriş Yap</button>
       <div class="login-err" id="loginErr">E-posta veya şifre hatalı.</div>
     </div>
@@ -528,9 +528,9 @@ tr:hover td{background:var(--bg2)}
   <div class="modal-box">
     <div class="modal-head"><h3>Kullanıcı Ekle</h3><button class="btn-sm" onclick="closeAddUserModal()">✕</button></div>
     <div class="modal-body">
-      <div class="fg"><label>Ad Soyad</label><input type="text" id="newUserName" placeholder="Ad Soyad"></div>
-      <div class="fg"><label>E-posta</label><input type="email" id="newUserEmail" placeholder="email@sirket.com"></div>
-      <div class="fg"><label>Şifre</label><input type="password" id="newUserPass" placeholder="Şifre"></div>
+      <div class="fg"><label>Ad Soyad</label><input type="text" id="newUserName" placeholder="Ad Soyad" autocomplete="off"></div>
+      <div class="fg"><label>E-posta</label><input type="email" id="newUserEmail" placeholder="email@sirket.com" autocomplete="off"></div>
+      <div class="fg"><label>Şifre</label><input type="password" id="newUserPass" placeholder="Şifre" autocomplete="new-password"></div>
       <div class="fg"><label>Rol</label><select id="newUserRole"><option value="user">Kullanıcı</option><option value="admin">Yönetici</option></select></div>
     </div>
     <div class="modal-foot">
