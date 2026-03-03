@@ -862,7 +862,7 @@ window.startForm=startForm;
 
 function gv(id){const el=document.getElementById(id);return el?el.value:'';}
 function fmt(n){if(!n)return '—';const num=parseFloat(n);if(isNaN(num))return n;return num.toLocaleString('tr-TR');}
-function d(val){return val||'……………'}
+function d(val){return esc(val)||'……………'}
 
 function buildForm(type){
   const today=new Date().toISOString().slice(0,10);
