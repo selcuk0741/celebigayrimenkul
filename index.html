@@ -872,6 +872,7 @@ window.startForm=startForm;
 function gv(id){if(_contractViewData&&id in _contractViewData)return _contractViewData[id]||'';const el=document.getElementById(id);return el?el.value:'';}
 function fmt(n){if(!n)return '—';const num=parseFloat(n);if(isNaN(num))return n;return num.toLocaleString('tr-TR');}
 function d(val){return esc(val)||'……………'}
+function formatDate(d){if(!d)return '—';const dt=new Date(d);if(isNaN(dt))return d;return dt.toLocaleDateString('tr-TR',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+dt.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'});}
 
 function buildForm(type){
   const today=new Date().toISOString().slice(0,10);
@@ -1049,7 +1050,7 @@ async function saveDraft(){
   showToast('✓ Taslak buluta kaydedildi!');
 }
 async function _saveContract(type,docNo,durum){
-  const c={id:docNo,type,date:new Date().toISOString().slice(0,10),durum,createdBy:currentUser.uid,assignedTo:currentUser.uid,createdByName:currentUser.name};
+  const c={id:docNo,type,date:new Date().toISOString(),durum,createdBy:currentUser.uid,assignedTo:currentUser.uid,createdByName:currentUser.name};
   if(type==='satis'){
     Object.assign(c,{
       satici:gv('f_satici'),satici_tc:gv('f_satici_tc'),satici_tel:gv('f_satici_tel'),satici_email:gv('f_satici_email'),satici_adres:gv('f_satici_adres'),
@@ -1367,7 +1368,7 @@ function renderContractTable(list,showDelete=true){
     const badge=c.type==='satis'?'badge-satis':c.type==='kira'?'badge-kira':'badge-aracilik';
     const danismanCell=isAdmin?`<td><span style="font-size:12px">${esc(c.createdByName)||'—'}</span></td>`:'';
     const safeId=esc(c.id);
-    return `<tr><td><span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)">${safeId}</span></td><td><span class="badge ${badge}">${tn[c.type]}</span></td><td>${taraf}</td><td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.adres)||'—'}</td><td>${esc(c.date)||'—'}</td><td>${db[c.durum]||''}</td>${danismanCell}<td style="display:flex;gap:6px"><button class="btn-sm" onclick="viewContract('${safeId}')">Görüntüle</button>${showDelete&&isAdmin?`<button class="btn-sm danger" onclick="deleteContract('${safeId}')">Sil</button>`:''}</td></tr>`;
+    return `<tr><td><span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)">${safeId}</span></td><td><span class="badge ${badge}">${tn[c.type]}</span></td><td>${taraf}</td><td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.adres)||'—'}</td><td>${formatDate(c.date)}</td><td>${db[c.durum]||''}</td>${danismanCell}<td style="display:flex;gap:6px"><button class="btn-sm" onclick="viewContract('${safeId}')">Görüntüle</button>${showDelete&&isAdmin?`<button class="btn-sm danger" onclick="deleteContract('${safeId}')">Sil</button>`:''}</td></tr>`;
   }).join('')+'</tbody></table>';
 }
 
