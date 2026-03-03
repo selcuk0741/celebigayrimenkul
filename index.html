@@ -545,7 +545,7 @@ tr:hover td{background:var(--bg2)}
 <script type="module">
 // ── FİREBASE ──────────────────────────────────────────────────────────────────
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, where, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword, browserLocalPersistence, setPersistence } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { initializeApp as initializeSecondaryApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 
@@ -648,10 +648,18 @@ async function fbSaveContract(c){
 }
 async function fbLoadContracts(){
   try{
-    const q = query(collection(db,'contracts'), orderBy('date','desc'));
+    let q;
+    if(currentUser?.role === 'admin'){
+      q = query(collection(db,'contracts'), orderBy('date','desc'));
+    } else {
+      q = query(collection(db,'contracts'), where('createdBy','==',currentUser.uid));
+    }
     const snap = await getDocs(q);
     const raw = snap.docs.map(d=>({...d.data(), _docId:d.id}));
     contracts = await Promise.all(raw.map(c=>_decryptContract(c)));
+    if(currentUser?.role !== 'admin'){
+      contracts.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    }
   } catch(e){ console.error('Yükleme hatası:',e); }
 }
 async function fbDeleteContract(c){
